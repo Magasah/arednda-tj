@@ -1,0 +1,39 @@
+[project]
+name = "kiroya-bot"
+version = "0.1.0"
+description = "KIROYA — Telegram-бот (aiogram 3)"
+requires-python = ">=3.14"
+dependencies = [
+    "aiogram>=3.31",
+    "httpx>=0.28",
+    "pydantic-settings>=2.10",
+    "redis[hiredis]>=6.4",
+]
+
+[dependency-groups]
+dev = [
+    "fakeredis>=2.38.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.9",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S", "SIM", "RUF"]
+ignore = ["S101", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106"]

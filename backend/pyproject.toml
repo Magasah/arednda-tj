@@ -1,0 +1,64 @@
+[project]
+name = "kiroya-backend"
+version = "0.1.0"
+description = "KIROYA — P2P платформа аренды вещей (backend)"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.118",
+    "uvicorn[standard]>=0.37",
+    "pydantic>=2.11",
+    "pydantic-settings>=2.10",
+    "sqlalchemy[asyncio]>=2.0.43",
+    "asyncpg>=0.30",
+    "alembic>=1.16",
+    "geoalchemy2>=0.18",
+    "redis[hiredis]>=6.4",
+    "structlog>=25.4",
+    "pyjwt>=2.10",
+    "slowapi>=0.1.10",
+    "limits>=5.8.0",
+    "httpx>=0.28.1",
+    "minio>=7.2.20",
+    "python-multipart>=0.0.32",
+    "celery[redis]>=5.6.3",
+    "flower>=2.2.0",
+    "kombu[redis]>=5.6.2,<5.7",
+    "tzdata>=2026.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "pytest-asyncio>=1.2",
+    "ruff>=0.13",
+    "mypy>=1.18",
+    "fakeredis>=2.38.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S", "SIM", "RUF"]
+ignore = ["S101", "RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.ruff.lint.per-file-ignores]
+# Сгенерированные миграции: длинные SQL-выражения не переносим
+"migrations/versions/*" = ["E501"]
+# Тесты: строковые литералы вида "bearer" — не секреты
+"tests/*" = ["S105", "S106"]
