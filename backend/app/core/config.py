@@ -128,6 +128,9 @@ class Settings(BaseSettings):
     # Общий секрет backend ↔ бот: только бот может привязать telegram_id и получает
     # rate limit по пользователю Telegram, а не по своему IP
     bot_api_secret: SecretStr = SecretStr("")
+    # Общий секрет backend ↔ сервер сайта (Next.js): rate limit по IP посетителя (X-Client-IP),
+    # а не по IP сервера сайта, через который идут все запросы входа
+    web_api_secret: SecretStr = SecretStr("")
 
     # --- Rate limit (slowapi). В проде с несколькими воркерами — Redis ---
     rate_limit_storage_uri: str = "memory://"

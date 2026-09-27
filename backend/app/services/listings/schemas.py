@@ -132,6 +132,9 @@ class ListingUpdate(BaseModel):
 
 
 class ListingFilters(BaseModel):
+    q: str | None = Field(
+        default=None, max_length=100, description="Поиск по названию (без учёта регистра)"
+    )
     category: str | None = Field(default=None, description="slug категории")
     city: str | None = None
     lat: float | None = Field(default=None, ge=-90, le=90)

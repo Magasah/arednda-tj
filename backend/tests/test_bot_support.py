@@ -41,6 +41,22 @@ def test_rate_limit_key_per_telegram_user_only_for_bot() -> None:
     assert limiter_module.rate_limit_key(_request({})) == "10.0.0.1"
 
 
+def test_rate_limit_key_per_visitor_ip_only_for_web(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "web_api_secret", SecretStr("test-web-secret"))
+    web = {"X-Web-Secret": "test-web-secret", "X-Client-IP": "203.0.113.7"}
+    assert limiter_module.rate_limit_key(_request(web)) == "web:203.0.113.7"
+    # Без секрета или с мусором вместо IP — обычный ключ по адресу соединения
+    forged = {"X-Web-Secret": "wrong", "X-Client-IP": "203.0.113.7"}
+    assert limiter_module.rate_limit_key(_request(forged)) == "10.0.0.1"
+    garbage = {"X-Web-Secret": "test-web-secret", "X-Client-IP": "not-an-ip"}
+    assert limiter_module.rate_limit_key(_request(garbage)) == "10.0.0.1"
+
+
+def test_web_secret_disabled_when_not_configured() -> None:
+    web = {"X-Web-Secret": "", "X-Client-IP": "203.0.113.7"}
+    assert limiter_module.rate_limit_key(_request(web)) == "10.0.0.1"
+
+
 async def test_link_telegram_requires_bot_secret(
     client: AsyncClient, user: User, db_session: AsyncSession
 ) -> None:
