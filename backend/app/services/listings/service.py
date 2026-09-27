@@ -106,6 +106,10 @@ def _point(lat: float, lng: float) -> Any:
 async def list_listings(session: AsyncSession, filters: ListingFilters) -> ListingPage:
     query = card_query().where(Listing.status == ListingStatus.ACTIVE)
 
+    if filters.q and filters.q.strip():
+        # Экранируем % и _: пользовательский ввод — подстрока, а не шаблон LIKE
+        pattern = filters.q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.where(Listing.title.ilike(f"%{pattern}%", escape="\\"))
     if filters.category:
         query = query.where(Category.slug == filters.category)
     if filters.city:

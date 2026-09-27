@@ -1,11 +1,13 @@
+import { t } from "@/lib/i18n";
+
 export interface NavLink {
   href: string;
   label: string;
 }
 
 export const navLinks: NavLink[] = [
-  { href: "#how-it-works", label: "Как это работает" },
-  { href: "#categories", label: "Категории" },
-  { href: "#safety", label: "Безопасность" },
-  { href: "#help", label: "Помощь" },
+  { href: "/catalog", label: t("nav.catalog") },
+  { href: "/how-it-works", label: t("nav.howItWorks") },
+  { href: "/safety", label: t("nav.safety") },
+  { href: "/help", label: t("nav.help") },
 ];

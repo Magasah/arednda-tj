@@ -18,6 +18,11 @@
 git clone https://github.com/Magasah/arednda-tj.git && cd arednda-tj
 git checkout develop
 
+# Всё в Docker одной командой (Python/Node ставить не нужно):
+#   make setup && docker compose up --build     (Windows: scripts\setup.ps1)
+
+# Разработка без Docker — инфраструктура в Docker, сервисы локально:
+make setup                                # корневой .env для контейнеров db/redis/minio
 cp backend/.env.example backend/.env      # секреты — у владельца проекта
 cp bot/.env.example bot/.env
 cp web/.env.example web/.env.local

@@ -17,6 +17,66 @@
 ```
 ---
 ## 🟢 Записи работ (newest first)
+## [2026-09-27 17:30] — САЙТ: КАТАЛОГ, ВХОД ПО SMS, ПРОФИЛЬ, БЕЗОПАСНОСТЬ
+- Задача: превратить web/ из лендинга в продукт: API-клиент и store, 11 страниц, общие компоненты, безопасность, адаптивность и a11y, SEO, обработка ошибок, i18n-подготовка, тесты
+- Что сделал:
+  - API (web/src/lib/api): client.ts на fetch — Bearer из store, при 401 один общий refresh и повтор, иначе выход; ошибки → ApiError { message, code, fields }; типы из схем backend; auth/listings/users; server.ts — SSR-клиент (в docker ходит в backend по API_INTERNAL_URL)
+  - Сессия: BFF /api/auth/[send-otp|verify-otp|refresh|session|logout] и /api/users/me (PATCH). Токены — httpOnly cookie SameSite=Strict (access на «/», refresh только на «/api»), Secure управляется COOKIE_SECURE. В JS — только access в памяти Zustand, в localStorage токенов нет. Сессия восстанавливается после F5
+  - CSRF: мутации только через API routes + X-Requested-With + проверка Origin/Sec-Fetch-Site; открытый редирект ?next= закрыт (safeNextPath)
+  - middleware.ts: /profile без сессии → /login?next=…; второй рубеж — ProtectedRoute (сессия истекла → вход)
+  - Страницы (app/(main)): каталог (SSR первой страницы + infinite scroll через IntersectionObserver и кнопка «Показать ещё»), каталог по категории, карточка (галерея со свайпом/стрелками, депозит, владелец → /user/[id], похожие, generateMetadata + OG-фото, Product JSON-LD, липкая панель «Забронировать» на мобиле), вход (маска +992, 6 полей кода, 60 с до повтора, 5 ошибок → блок 5 мин), профиль (синий хедер, статы, табы: объявления / брони / настройки: имя, аватар, «Выйти»), how-it-works, safety, help (FAQ + FAQPage JSON-LD), terms, privacy, about (LegalPageLayout). Доп.: /user/[id] — публичный профиль (на него ведёт блок владельца)
+  - Ошибки и загрузка: app/error.tsx + (main)/error.tsx, not-found.tsx, loading.tsx (+ скелеты каталога и карточки), empty/error-состояния на каждой странице, toasts (sonner): вход, ошибка OTP, сессия истекла, ссылка скопирована
+  - Безопасность заголовками: HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP (next.config.mjs). Фото из MinIO/uploads — через свои /media и /uploads (route handlers: только GET, только image/*, без ../)
+  - SEO: title/description/canonical/OG у каждой страницы (lib/metadata.ts), динамический sitemap (категории + все объявления), robots (закрыты /profile, /login, /api), JSON-LD Organization / Product / BreadcrumbList / FAQPage
+  - i18n: все строки в lib/i18n/ru.ts (+ ru.content.ts для длинных текстов), t(key, vars) с типизированными ключами, plural(); лендинг переведён на t()
+  - Производительность: framer-motion убран (FadeInUp и меню — CSS 200ms ease-out), главная 154 → 110 KB First Load JS; заголовок hero без анимации (LCP), фон hero на мобиле не грузится; LoginForm, модалка и галерея — dynamic()
+  - Тесты: vitest + Testing Library, 51 тест: LoginForm (7), OTPInput (6), ListingCard (5), API-клиент и refresh (9), middleware + safeNextPath (11), clientIp и CSRF (9), форматирование (4). Добавлены в CI (web-build → npm test)
+- Изменения backend (маленькие, с тестами):
+  - GET /listings?q= — поиск по названию (ILIKE, % и _ экранируются) — без него строка поиска была бы фейком
+  - WEB_API_SECRET + X-Client-IP в limiter (как X-Bot-Secret у бота): иначе все посетители сайта делили бы лимит send-otp 1/мин с IP сервера сайта. IP посетителя сайт берёт только из заголовка доверенного прокси (TRUSTED_IP_HEADER, напр. nginx X-Real-IP) — проверено: подмена X-Forwarded-For лимит не обходит
+- Инфраструктура: .env.example — SECRET_KEY пустой (генерация openssl rand -hex 32 / make setup), docker compose не стартует с пустым ключом; новые WEB_API_SECRET, TRUSTED_IP_HEADER, COOKIE_SECURE, NEXT_PUBLIC_MEDIA_URL; make setup и setup.ps1 генерируют WEB_API_SECRET. PR #1: CI docker-compose чинил (--wait падал на сервисах без healthcheck)
+- Проверено (docker, Linux): 5 объявлений 5 категорий созданы через API (send-otp → verify → POST /listings); сценарий в браузере (Playwright, десктоп и iPhone 12): главная → «Как это работает» → каталог (5) → карточка → «Забронировать» → /login → код из лога → вход → модалка «скоро откроем» → профиль (имя, аватар, статы) → F5 → «Выйти» → главная; /profile без сессии → /login. Все 13 страниц × 320/375/414/768/1024/1440/1920 — без горизонтального скролла, таргеты ≥ 44px, инпуты ≥ 16px. backend 104/104 в контейнере, web 51/51, lint/tsc/build чистые
+- Lighthouse (headless Chromium в облаке): главная mobile Perf 95–98 / A11y 96 / BP 100 / SEO 100, desktop Perf 97–100; каталог/карточка/вход Perf 91–93, /help — A11y 100. /login SEO 66 — намеренный noindex
+- Отклонения / решения, нужны от владельца:
+  - A11y 100 недостижим без решения по бренду: #E67E22 с белым текстом и оранжевые цены/депозит — 2.6–2.85:1 (нужно 4.5). Это цвета DS, не менял
+  - #6B7280 на #F8F6F2 = 4.48:1 (< 4.5): для вторичного текста на фоне добавлен токен muted-bg (#696868 = ink 65% поверх фона, 5.15:1); на белых карточках остаётся #6B7280
+  - В палитре нет красного, а он нужен (ошибки форм, «Выйти»): добавлен danger #C0392B (5.4:1). И primary-soft #A8C6D9 — из спеки хедера профиля
+  - Отзывов о вещи в API нет (есть только об арендаторах) — блок отзывов на карточке скрыт. Избранного в API нет — сердечко показывает тост, как в боте
+  - После входа редирект на страницу, откуда пришли (?next=), иначе /profile — в сценарии с «Забронировать» это карточка, а не профиль
+  - «Мои объявления» — из /users/me (active_listings, до 10), отдельного эндпоинта нет
+  - axios не ставил — хватает fetch; DOMPurify не ставил — HTML пользователя нигде не рендерится (JSON-LD экранируется)
+  - Новые зависимости web: zustand, sonner, @radix-ui/react-dialog, server-only; dev: vitest, @vitejs/plugin-react, jsdom, @testing-library/{react,dom,user-event,jest-dom}. Удалена: framer-motion
+- Не проверено: реальный MinIO (в песочнице закрыт реестр — фото шли через backend/uploads; путь /media проверит CI/Windows); Lighthouse на реальном устройстве
+- Файлы: web/src/{app/(main)/** (11 страниц + user/[id], loading/error/not-found), app/api/{auth/[...action],users/me}, app/{media,uploads}/[...path], app/{layout,error,not-found,sitemap,robots}.tsx, middleware.ts, components/{auth,listing,profile,content,seo,providers}/*, components/ui/{Button,Input,Modal,Skeleton,Toast,Avatar,EmptyState,FadeInUp,Logo}.tsx, components/layout/*, components/sections/*, lib/{api,auth,i18n,store}/*, lib/{env,format,media,mediaProxy,metadata,catalog}.ts, test/*}, web/{next.config.mjs,tailwind.config.ts,vitest.config.mts,package.json,Dockerfile}; backend/app/core/{config,limiter}.py, backend/app/services/listings/{schemas,service}.py, backend/tests/{test_listings,test_bot_support}.py, backend/.env.example; .env.example, docker-compose.yml, Makefile, scripts/setup.ps1, .github/workflows/ci.yml, README.md, docs/{AI_START_HERE,CONTRIBUTING}.md, docs/screenshots/site/*
+- Статус: ЗАВЕРШЕНО
+- Следующий шаг: владелец — решение по контрасту оранжевого; бронирование на сайте (POST /bookings + оплата); публичные отзывы о вещи в backend; избранное; таджикская версия (tj.ts); nginx перед сайтом в проде с TRUSTED_IP_HEADER=x-real-ip и COOKIE_SECURE=true
+---
+## [2026-09-27 16:10] — DOCKER: ВСЁ ОКРУЖЕНИЕ ОДНОЙ КОМАНДОЙ
+- Задача: `cp .env.example .env && docker compose up --build` поднимает весь проект — без ручной установки Python/Node/Postgres/Redis/MinIO
+- Что сделал:
+  - docker-compose.yml: db (postgis 17-3.5), redis 7-alpine, minio, backend, celery_worker, celery_beat, flower, web; bot — профиль `with-bot`; backend-tests / bot-tests — профиль `test`. Все переменные — из корневого `.env`, volumes postgres_data / redis_data / minio_data
+  - Порядок старта: db/redis healthy → backend (миграции + сид) → healthy по /health (30 с, start_interval 3 с) → celery_worker/beat/bot/тесты. Отдельный сервис `migrate` удалён: миграции катит только entrypoint backend, у Celery/Flower `RUN_MIGRATIONS=false` — нет гонки нескольких `alembic upgrade`
+  - Порты db, redis, minio, flower слушают только 127.0.0.1 (не светим Redis без пароля и Flower в локальную сеть); backend и web — все интерфейсы
+  - backend/Dockerfile: multi-stage на pip + requirements.txt (gcc, libpq-dev только в builder), runtime без компилятора и apt, non-root `app`, код принадлежит root, stage `test` с dev-зависимостями; вместо uv из ghcr.io — pip (меньше внешних реестров)
+  - backend/docker-entrypoint.sh: ждёт БД (таймаут 60 с) → `alembic upgrade head` → `seed_categories.py` (идемпотентный upsert) → exec CMD. chmod делается в Dockerfile — на Windows бит исполнения теряется
+  - bot/Dockerfile: pip + requirements.txt, non-root, stage `test`
+  - web/Dockerfile: multi-stage node:20-alpine → `.next/standalone` + static + public, non-root, `node server.js`; в next.config.mjs добавлен `output: "standalone"`; NEXT_PUBLIC_* — build args
+  - .env.example в корне (docker-хосты db/redis/minio/backend), .dockerignore в backend/bot/web
+  - Makefile (setup/up/up-bot/down/logs/ps/backend-sh/db-sh/test/clean); `make setup` генерирует SECRET_KEY, BOT_API_SECRET и единый пароль для Postgres (+DATABASE_URL) и MinIO. scripts/setup.ps1, up.ps1, test.ps1 — то же для Windows без make (UTF-8 с BOM — для PowerShell 5.1)
+  - README: «Быстрый старт» через Docker + раздел «Разработка без Docker»
+  - CI: новый job `docker-compose` — сборка, `up --wait`, smoke /health, /docs, :3000, тесты в контейнерах
+- Отклонения от ТЗ:
+  - MinIO: `minio/minio` больше нет на Docker Hub (проверено: API Hub отвечает «object not found») — по умолчанию `cgr.dev/chainguard/minio:latest`, переопределяется `MINIO_IMAGE` в .env
+  - Ожидание БД — python-сокет вместо `nc`: не нужен apt-пакет netcat в runtime
+  - web запускается `node server.js` (standalone), а не `npm run start` — `next start` не работает со standalone-сборкой
+  - профиль бота — `with-bot` (раньше `bot`); volume БД переименован pg_data → postgres_data: старые локальные данные остаются в томе `kiroya_pg_data` (`docker volume rm kiroya_pg_data`, если не нужны)
+  - compose больше не читает backend/.env и bot/.env — они нужны только для запуска без Docker
+- Проверено (облачный Linux, Docker 29.3, Compose 5.1): все образы собраны; `up --wait` — все контейнеры up, backend/web/db/redis healthy; миграции 0001→0005, сид 5 категорий, повторный старт — без новых миграций; /health → {"status":"ok","db":"connected"}, /api/v1/health/ready → postgres+redis true, /docs 200, openapi 30 путей, :3000 200 (скриншот), Flower 200, Celery worker ready, beat запущен; backend 101/101 и bot 16/16 внутри контейнеров; `make setup` проверен
+- Не проверено в песочнице: реальный MinIO (реестр cgr.dev закрыт egress-политикой, стояла заглушка — backend ушёл в локальный фолбэк); apt-слой builder'а (deb.debian.org закрыт) — пройдут в CI и на Windows; PowerShell-скрипты не запускались (нет pwsh)
+- Файлы: docker-compose.yml, .env.example (новый), Makefile (новый), scripts/{setup,up,test}.ps1 (новые), backend/{Dockerfile, docker-entrypoint.sh (новый), .dockerignore}, bot/{Dockerfile, .dockerignore}, web/{Dockerfile (новый), .dockerignore (новый), next.config.mjs}, README.md, .github/workflows/ci.yml, docs/WORK_LOG.md
+- Статус: ЗАВЕРШЕНО
+- Следующий шаг: владелец — проверить `docker compose up --build` на Windows + Docker Desktop и прислать `docker ps`; обновить docs/ARCHITECTURE (раздел «Локальное окружение»); в проде Flower — за basic-auth
+---
 ## [2026-09-27 12:00] — GIT-РЕПОЗИТОРИЙ, ДОКУМЕНТАЦИЯ, CI
 - Задача: подготовить репозиторий, чтобы любой ИИ или разработчик мог клонировать и начать работу: .gitignore, README, docs/, CONTRIBUTING, .env.example, GitHub Actions, шаблон PR, CODEOWNERS, первый push (main + develop)
 - Что сделал:

@@ -173,6 +173,19 @@ async def test_get_listings_filter_city(client: AsyncClient, owner: User) -> Non
     assert [item["title"] for item in body["items"]] == ["В Худжанде"]
 
 
+async def test_get_listings_search_by_title(client: AsyncClient, owner: User) -> None:
+    await _create(client, owner, title="Перфоратор Bosch", city="Поиск-тест")
+    await _create(client, owner, title="Камера Canon", city="Поиск-тест")
+    await _create(client, owner, title="Скидка 100%", city="Поиск-тест")
+
+    body = (await client.get(URL, params={"q": "  перфОРАТОР ", "city": "Поиск-тест"})).json()
+    assert [item["title"] for item in body["items"]] == ["Перфоратор Bosch"]
+
+    # % и _ ищутся как обычные символы, а не как шаблон LIKE
+    body = (await client.get(URL, params={"q": "%", "city": "Поиск-тест"})).json()
+    assert [item["title"] for item in body["items"]] == ["Скидка 100%"]
+
+
 async def test_patch_listing_owner(client: AsyncClient, owner: User) -> None:
     listing_id = (await _create(client, owner)).json()["id"]
     await client.get(f"{URL}/{listing_id}")  # прогреваем кэш карточки
