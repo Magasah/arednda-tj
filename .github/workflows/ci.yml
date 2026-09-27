@@ -156,8 +156,12 @@ jobs:
       - name: Проверка docker-compose.yml
         run: docker compose --profile with-bot --profile test config -q
 
+      # --wait только для сервисов с healthcheck: у Celery/Flower его нет,
+      # и некоторые версии Compose на них падают («has no healthcheck configured»)
       - name: Сборка и запуск
-        run: docker compose up -d --build --wait --wait-timeout 300
+        run: |
+          docker compose up -d --build
+          docker compose up -d --wait --wait-timeout 300 db redis backend web
 
       - name: Smoke-тест
         run: |
