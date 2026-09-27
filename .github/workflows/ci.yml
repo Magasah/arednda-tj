@@ -1,0 +1,142 @@
+# CI KIROYA: тесты backend и бота, lint + сборка лендинга
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Новый пуш в ту же ветку отменяет устаревший прогон
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    name: backend-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      # Тот же образ, что в docker-compose: нужны PostGIS и btree_gist
+      db:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: kiroya
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: kiroya
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kiroya -d kiroya"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    # Только тестовые значения — реальных секретов в CI нет
+    env:
+      ENVIRONMENT: development
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: kiroya
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: kiroya
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET_KEY: ci-test-secret-not-for-production
+      BOT_API_SECRET: ci-test-bot-secret
+      CELERY_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      # Python 3.14: код использует uuid.uuid7() из стандартной библиотеки
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Миграции
+        run: alembic upgrade head
+
+      - name: Pytest
+        run: pytest -v
+
+  web-build:
+    name: web-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  bot-tests:
+    name: bot-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: bot
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            bot/requirements.txt
+            bot/requirements-dev.txt
+
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+
+      - name: Ruff
+        run: ruff check .
+
+      # Telegram, backend и Redis в тестах подменены — внешние сервисы не нужны
+      - name: Pytest
+        run: |
+          if [ -d tests ]; then
+            pytest -v
+          else
+            echo "Тестов нет — пропускаю"
+          fi

@@ -1,0 +1,8 @@
+# Владелец проекта — ревьюер всех PR
+* @Magasah
+
+# Критичные файлы требуют ревью владельца
+/backend/app/services/escrow/  @Magasah
+/backend/app/services/auth/    @Magasah
+/.github/                      @Magasah
+/docs/                         @Magasah
