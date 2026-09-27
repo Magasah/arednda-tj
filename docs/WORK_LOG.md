@@ -17,6 +17,32 @@
 ```
 ---
 ## 🟢 Записи работ (newest first)
+## [2026-09-27 16:10] — DOCKER: ВСЁ ОКРУЖЕНИЕ ОДНОЙ КОМАНДОЙ
+- Задача: `cp .env.example .env && docker compose up --build` поднимает весь проект — без ручной установки Python/Node/Postgres/Redis/MinIO
+- Что сделал:
+  - docker-compose.yml: db (postgis 17-3.5), redis 7-alpine, minio, backend, celery_worker, celery_beat, flower, web; bot — профиль `with-bot`; backend-tests / bot-tests — профиль `test`. Все переменные — из корневого `.env`, volumes postgres_data / redis_data / minio_data
+  - Порядок старта: db/redis healthy → backend (миграции + сид) → healthy по /health (30 с, start_interval 3 с) → celery_worker/beat/bot/тесты. Отдельный сервис `migrate` удалён: миграции катит только entrypoint backend, у Celery/Flower `RUN_MIGRATIONS=false` — нет гонки нескольких `alembic upgrade`
+  - Порты db, redis, minio, flower слушают только 127.0.0.1 (не светим Redis без пароля и Flower в локальную сеть); backend и web — все интерфейсы
+  - backend/Dockerfile: multi-stage на pip + requirements.txt (gcc, libpq-dev только в builder), runtime без компилятора и apt, non-root `app`, код принадлежит root, stage `test` с dev-зависимостями; вместо uv из ghcr.io — pip (меньше внешних реестров)
+  - backend/docker-entrypoint.sh: ждёт БД (таймаут 60 с) → `alembic upgrade head` → `seed_categories.py` (идемпотентный upsert) → exec CMD. chmod делается в Dockerfile — на Windows бит исполнения теряется
+  - bot/Dockerfile: pip + requirements.txt, non-root, stage `test`
+  - web/Dockerfile: multi-stage node:20-alpine → `.next/standalone` + static + public, non-root, `node server.js`; в next.config.mjs добавлен `output: "standalone"`; NEXT_PUBLIC_* — build args
+  - .env.example в корне (docker-хосты db/redis/minio/backend), .dockerignore в backend/bot/web
+  - Makefile (setup/up/up-bot/down/logs/ps/backend-sh/db-sh/test/clean); `make setup` генерирует SECRET_KEY, BOT_API_SECRET и единый пароль для Postgres (+DATABASE_URL) и MinIO. scripts/setup.ps1, up.ps1, test.ps1 — то же для Windows без make (UTF-8 с BOM — для PowerShell 5.1)
+  - README: «Быстрый старт» через Docker + раздел «Разработка без Docker»
+  - CI: новый job `docker-compose` — сборка, `up --wait`, smoke /health, /docs, :3000, тесты в контейнерах
+- Отклонения от ТЗ:
+  - MinIO: `minio/minio` больше нет на Docker Hub (проверено: API Hub отвечает «object not found») — по умолчанию `cgr.dev/chainguard/minio:latest`, переопределяется `MINIO_IMAGE` в .env
+  - Ожидание БД — python-сокет вместо `nc`: не нужен apt-пакет netcat в runtime
+  - web запускается `node server.js` (standalone), а не `npm run start` — `next start` не работает со standalone-сборкой
+  - профиль бота — `with-bot` (раньше `bot`); volume БД переименован pg_data → postgres_data: старые локальные данные остаются в томе `kiroya_pg_data` (`docker volume rm kiroya_pg_data`, если не нужны)
+  - compose больше не читает backend/.env и bot/.env — они нужны только для запуска без Docker
+- Проверено (облачный Linux, Docker 29.3, Compose 5.1): все образы собраны; `up --wait` — все контейнеры up, backend/web/db/redis healthy; миграции 0001→0005, сид 5 категорий, повторный старт — без новых миграций; /health → {"status":"ok","db":"connected"}, /api/v1/health/ready → postgres+redis true, /docs 200, openapi 30 путей, :3000 200 (скриншот), Flower 200, Celery worker ready, beat запущен; backend 101/101 и bot 16/16 внутри контейнеров; `make setup` проверен
+- Не проверено в песочнице: реальный MinIO (реестр cgr.dev закрыт egress-политикой, стояла заглушка — backend ушёл в локальный фолбэк); apt-слой builder'а (deb.debian.org закрыт) — пройдут в CI и на Windows; PowerShell-скрипты не запускались (нет pwsh)
+- Файлы: docker-compose.yml, .env.example (новый), Makefile (новый), scripts/{setup,up,test}.ps1 (новые), backend/{Dockerfile, docker-entrypoint.sh (новый), .dockerignore}, bot/{Dockerfile, .dockerignore}, web/{Dockerfile (новый), .dockerignore (новый), next.config.mjs}, README.md, .github/workflows/ci.yml, docs/WORK_LOG.md
+- Статус: ЗАВЕРШЕНО
+- Следующий шаг: владелец — проверить `docker compose up --build` на Windows + Docker Desktop и прислать `docker ps`; обновить docs/ARCHITECTURE (раздел «Локальное окружение»); в проде Flower — за basic-auth
+---
 ## [2026-09-27 12:00] — GIT-РЕПОЗИТОРИЙ, ДОКУМЕНТАЦИЯ, CI
 - Задача: подготовить репозиторий, чтобы любой ИИ или разработчик мог клонировать и начать работу: .gitignore, README, docs/, CONTRIBUTING, .env.example, GitHub Actions, шаблон PR, CODEOWNERS, первый push (main + develop)
 - Что сделал:

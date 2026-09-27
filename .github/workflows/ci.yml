@@ -140,3 +140,40 @@ jobs:
           else
             echo "Тестов нет — пропускаю"
           fi
+
+  # «Одна кнопка»: весь стек из docker-compose.yml собирается и поднимается,
+  # backend здоров (миграции + сид прошли), сайт отвечает, тесты идут в контейнерах
+  docker-compose:
+    name: docker-compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: .env из шаблона
+        run: cp .env.example .env
+
+      - name: Проверка docker-compose.yml
+        run: docker compose --profile with-bot --profile test config -q
+
+      # --wait только для сервисов с healthcheck: у Celery/Flower его нет,
+      # и некоторые версии Compose на них падают («has no healthcheck configured»)
+      - name: Сборка и запуск
+        run: |
+          docker compose up -d --build
+          docker compose up -d --wait --wait-timeout 300 db redis backend web
+
+      - name: Smoke-тест
+        run: |
+          curl -fsS http://localhost:8000/health
+          curl -fsS -o /dev/null http://localhost:8000/docs
+          curl -fsS -o /dev/null http://localhost:3000
+
+      - name: Тесты в контейнерах
+        run: |
+          docker compose --profile test run --rm --build backend-tests
+          docker compose --profile test run --rm --build bot-tests
+
+      - name: Логи при падении
+        if: failure()
+        run: docker compose logs --no-color --tail 200
