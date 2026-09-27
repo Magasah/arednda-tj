@@ -14,7 +14,7 @@ export function Logo({ inverse = false, className }: LogoProps) {
     <Link
       href="/"
       aria-label="KIROYA — на главную"
-      className={cn("inline-flex items-center gap-2", className)}
+      className={cn("inline-flex min-h-11 items-center gap-2", className)}
     >
       <LogoMark inverse={inverse} className="size-9 sm:size-10" />
       <span

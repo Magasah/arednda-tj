@@ -30,7 +30,7 @@ export function SectionHeading({
         <p
           className={cn(
             "mt-3 text-base leading-relaxed sm:text-lg",
-            inverse ? "text-surface/75" : "text-muted",
+            inverse ? "text-surface/75" : "text-muted-bg",
           )}
         >
           {description}

@@ -2,28 +2,14 @@ import { Container } from "@/components/ui/Container";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import type { KiroyaIconName } from "@/lib/kiroyaIcons";
+import { t } from "@/lib/i18n";
 
 import { StepCard } from "./StepCard";
 
 const steps: { icon: KiroyaIconName; title: string; description: string }[] = [
-  {
-    icon: "kiroya-location-pin",
-    title: "Найди вещь",
-    description:
-      "Ищи по категории или на карте — рядом с домом всегда найдётся то, что нужно на день или неделю.",
-  },
-  {
-    icon: "kiroya-deposit",
-    title: "Оплати безопасно",
-    description:
-      "Оплата и депозит замораживаются в эскроу. Владелец получит деньги только после передачи вещи.",
-  },
-  {
-    icon: "kiroya-shield-check",
-    title: "Получи и верни",
-    description:
-      "Встреча, фото-акт и QR-подтверждение. Вернул вещь в порядке — депозит сразу возвращается тебе.",
-  },
+  { icon: "kiroya-location-pin", title: t("home.step1Title"), description: t("home.step1Text") },
+  { icon: "kiroya-deposit", title: t("home.step2Title"), description: t("home.step2Text") },
+  { icon: "kiroya-shield-check", title: t("home.step3Title"), description: t("home.step3Text") },
 ];
 
 export function HowItWorksSection() {
@@ -36,8 +22,8 @@ export function HowItWorksSection() {
       <Container>
         <SectionHeading
           id="how-it-works-title"
-          title="Как это работает"
-          description="Три шага от поиска до возврата — без переписок в мессенджерах и риска потерять деньги."
+          title={t("home.howTitle")}
+          description={t("home.howText")}
         />
 
         <ol className="mt-10 grid gap-3 md:grid-cols-3 md:gap-6 lg:mt-14">

@@ -12,8 +12,10 @@ COPY . .
 # NEXT_PUBLIC_* встраиваются в JS на этапе сборки — поэтому build args, а не runtime env
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ARG NEXT_PUBLIC_SITE_URL=https://kiroya.tj
+ARG NEXT_PUBLIC_MEDIA_URL=http://localhost:9000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
-    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    NEXT_PUBLIC_MEDIA_URL=$NEXT_PUBLIC_MEDIA_URL
 RUN npm run build
 
 # ---------- Stage 2: runtime — только standalone-сервер и статика ----------

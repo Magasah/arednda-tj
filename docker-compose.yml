@@ -1,5 +1,6 @@
 # Локальный запуск KIROYA одной командой:
-#   cp .env.example .env && docker compose up --build
+#   make setup && docker compose up --build        (Windows: scripts\setup.ps1)
+#   или: cp .env.example .env, впиши SECRET_KEY (openssl rand -hex 32), docker compose up --build
 # С Telegram-ботом: docker compose --profile with-bot up --build
 # Тесты в контейнерах: docker compose --profile test run --rm backend-tests (см. Makefile)
 name: kiroya
@@ -11,6 +12,9 @@ x-backend: &backend-base
     target: runtime
   image: kiroya-backend:local
   env_file: .env
+  environment:
+    # Пустой ключ подписи JWT = подделываемые токены: без него compose не стартует
+    SECRET_KEY: ${SECRET_KEY:?SECRET_KEY пуст — выполни make setup или впиши openssl rand -hex 32 в .env}
   restart: unless-stopped
 
 services:
@@ -157,9 +161,19 @@ services:
       context: ./web
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://kiroya.tj}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_MEDIA_URL: ${NEXT_PUBLIC_MEDIA_URL:-http://localhost:9000}
     image: kiroya-web:local
     restart: unless-stopped
+    environment:
+      # Сервер сайта ходит в backend и MinIO по docker-сети, браузер — через localhost
+      API_INTERNAL_URL: http://backend:8000
+      MEDIA_INTERNAL_URL: http://minio:9000
+      WEB_API_SECRET: ${WEB_API_SECRET:-}
+      # Заголовок с IP посетителя от доверенного reverse proxy (nginx: x-real-ip). Пусто — не доверяем
+      TRUSTED_IP_HEADER: ${TRUSTED_IP_HEADER:-}
+      # Cookies с флагом Secure: включить за HTTPS (в проде), на http://localhost — false
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "${WEB_PORT:-3000}:3000"
     depends_on:

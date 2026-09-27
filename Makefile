@@ -8,17 +8,19 @@ COMPOSE ?= docker compose
 help: ## Список команд
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  make %-12s %s\n", $$1, $$2}'
 
-setup: ## .env.example → .env + случайные SECRET_KEY, BOT_API_SECRET и пароли
+setup: ## .env.example → .env + случайные SECRET_KEY, BOT_API_SECRET, WEB_API_SECRET и пароли
 	@if [ -f .env ]; then \
 		echo ".env уже есть — не трогаю (удали его, чтобы пересоздать)"; \
 	else \
 		cp .env.example .env; \
 		secret=$$(head -c 48 /dev/urandom | od -An -tx1 | tr -d ' \n'); \
 		bot_secret=$$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'); \
+		web_secret=$$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'); \
 		password=$$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'); \
 		sed -i.bak \
 			-e "s|^SECRET_KEY=.*|SECRET_KEY=$$secret|" \
 			-e "s|^BOT_API_SECRET=.*|BOT_API_SECRET=$$bot_secret|" \
+			-e "s|^WEB_API_SECRET=.*|WEB_API_SECRET=$$web_secret|" \
 			-e "s|change_me_in_production|$$password|g" .env; \
 		rm -f .env.bak; \
 		echo ".env создан, секреты сгенерированы. Дальше: make up"; \

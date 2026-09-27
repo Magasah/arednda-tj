@@ -13,7 +13,7 @@ KIROYA — P2P-платформа аренды вещей в Таджикист�
 |---|---|---|
 | `backend/` | FastAPI, PostgreSQL + PostGIS, Redis, Celery, MinIO | работает, тесты есть |
 | `bot/` | Telegram-бот на aiogram 3 | работает, тесты есть |
-| `web/` | Лендинг на Next.js 14 | работает |
+| `web/` | Сайт на Next.js 14: лендинг, каталог, карточка, вход по SMS, профиль | работает, тесты есть |
 | `mobile/` | Flutter-приложение | только каркас папок |
 | `ml/` | ML-антифрод | только каркас папок |
 
@@ -110,7 +110,7 @@ docker compose up -d db redis
 cd backend && pytest -v && ruff check .
 
 # Frontend
-cd web && npm run lint && npm run build
+cd web && npm run lint && npm test && npm run build
 
 # Bot
 cd bot && pytest -v && ruff check .

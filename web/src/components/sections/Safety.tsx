@@ -3,27 +3,25 @@ import { FadeInUp } from "@/components/ui/FadeInUp";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { TajikPattern } from "@/components/ui/TajikPattern";
 import type { KiroyaIconName } from "@/lib/kiroyaIcons";
+import { t } from "@/lib/i18n";
 
 import { SafetyFeature } from "./SafetyFeature";
 
 const features: { icon: KiroyaIconName; title: string; description: string }[] = [
   {
     icon: "kiroya-shield-check",
-    title: "Эскроу",
-    description:
-      "Оплата и депозит замораживаются до передачи вещи. Никто не получит деньги раньше времени — ни арендатор, ни владелец.",
+    title: t("home.safetyEscrowTitle"),
+    description: t("home.safetyEscrowText"),
   },
   {
     icon: "kiroya-photo-act",
-    title: "Фото-акт",
-    description:
-      "При передаче и возврате обе стороны фотографируют вещь в приложении. Если возник спор — есть доказательства.",
+    title: t("home.safetyPhotoTitle"),
+    description: t("home.safetyPhotoText"),
   },
   {
     icon: "kiroya-star-badge",
-    title: "ML-антифрод",
-    description:
-      "Система анализирует поведение и отзывы, отсеивает фейковые аккаунты и накрутку рейтинга ещё до сделки.",
+    title: t("home.safetyFraudTitle"),
+    description: t("home.safetyFraudText"),
   },
 ];
 
@@ -39,8 +37,8 @@ export function SafetySection() {
       <Container className="relative">
         <SectionHeading
           id="safety-title"
-          title="Безопасность на каждом шаге"
-          description="Мы отвечаем за сделку, чтобы вам не пришлось доверять незнакомцам на слово."
+          title={t("home.safetyTitle")}
+          description={t("home.safetyText")}
           inverse
         />
 

@@ -105,6 +105,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Тесты (vitest)
+        run: npm test
+
       - name: Build
         run: npm run build
 
@@ -150,8 +153,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # make setup = cp .env.example .env + случайные SECRET_KEY и пароли
       - name: .env из шаблона
-        run: cp .env.example .env
+        run: make setup
 
       - name: Проверка docker-compose.yml
         run: docker compose --profile with-bot --profile test config -q
