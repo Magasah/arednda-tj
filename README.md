@@ -41,23 +41,59 @@ design/    Логотипы, макеты, дизайн-система (web/desi
 .github/   CI, шаблон PR, CODEOWNERS
 ```
 
-## Быстрый старт для разработчика
+## Быстрый старт (Docker — одной командой)
 
-Требования: Docker Desktop, Python 3.14+, Node 20+.
-Рекомендуется [uv](https://docs.astral.sh/uv/) — `pyproject.toml` и `uv.lock` есть в `backend/` и `bot/`.
+Нужен только [Docker Desktop](https://www.docker.com/products/docker-desktop/). Python, Node, Postgres, Redis, MinIO ставить не нужно.
 
 ```bash
 git clone https://github.com/Magasah/arednda-tj.git
 cd arednda-tj
+cp .env.example .env
+docker compose up --build
+
+# Готово. Сервисы доступны:
+# http://localhost:3000       — сайт
+# http://localhost:8000       — API
+# http://localhost:8000/docs  — Swagger
+# http://localhost:9001       — MinIO Console (логин/пароль — MINIO_ACCESS_KEY / MINIO_SECRET_KEY из .env)
+# http://localhost:5555       — Flower (Celery)
 ```
 
-**1. Скопируй `.env` файлы из `.env.example`** и заполни значения (секреты запроси у владельца проекта):
+Первый запуск — 2–5 минут (сборка образов). Backend сам ждёт БД, накатывает миграции и сид категорий.
+Старый Docker без плагина compose v2 — та же команда через `docker-compose`.
+
+**Удобные команды** (`make` — Linux/macOS/Git Bash/WSL; на Windows без make — `scripts/*.ps1`):
+
+| make | PowerShell | Что делает |
+|---|---|---|
+| `make setup` | `scripts\setup.ps1` | `.env.example` → `.env` + случайные секреты и пароли |
+| `make up` | `scripts\up.ps1` | всё в фоне (без бота) |
+| `make up-bot` | `scripts\up.ps1 -WithBot` | вместе с Telegram-ботом (нужен `BOT_TOKEN` в `.env`) |
+| `make test` | `scripts\test.ps1` | тесты backend и бота в контейнерах |
+| `make logs` / `make down` | — | логи / остановка |
+| `make backend-sh` / `make db-sh` | — | shell в backend / psql |
+| `make clean` | — | ⚠️ down + удалить volumes (БД, Redis, MinIO) |
+
+PowerShell-скрипты: `powershell -ExecutionPolicy Bypass -File scripts\up.ps1`.
+
+Код входа по SMS в режиме `ENVIRONMENT=development` не отправляется, а пишется в лог backend: `docker compose logs -f backend`.
+
+## Разработка без Docker
+
+Для тех, кто запускает сервисы по отдельности (hot reload, отладчик).
+Требования: Python 3.14+, Node 20+, Docker — только для инфраструктуры.
+Рекомендуется [uv](https://docs.astral.sh/uv/) — `pyproject.toml` и `uv.lock` есть в `backend/` и `bot/`.
+
+**1. Скопируй `.env` файлы** (в них хосты `localhost`, а не имена docker-сервисов):
 
 ```bash
+cp .env.example .env              # нужен docker compose для db/redis/minio
 cp backend/.env.example backend/.env
 cp bot/.env.example bot/.env
 cp web/.env.example web/.env.local
 ```
+
+Пароли `POSTGRES_PASSWORD` и `MINIO_SECRET_KEY` в `backend/.env` должны совпадать с корневым `.env`.
 
 **2. Запусти инфраструктуру**
 
@@ -78,8 +114,6 @@ python -m scripts.seed_categories
 uvicorn app.main:app --reload --reload-dir app
 ```
 
-Код входа по SMS в режиме `ENVIRONMENT=development` не отправляется, а пишется в лог backend.
-
 **4. Frontend** (http://localhost:3000)
 
 ```bash
@@ -97,12 +131,12 @@ pip install -r requirements.txt
 python main.py
 ```
 
-**Всё в Docker одной командой:** `docker compose up -d --build` (backend, Celery, Flower);
-бот — `docker compose --profile bot up -d bot`.
-
 ## Тесты
 
 ```bash
+make test                     # всё в контейнерах (или scripts\test.ps1)
+
+# без Docker:
 cd backend && pytest -v       # нужны db и redis из docker compose
 cd bot && pytest -v
 cd web && npm run lint && npm run build

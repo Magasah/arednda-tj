@@ -1,16 +1,27 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.14-slim AS builder
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never UV_PROJECT_ENVIRONMENT=/opt/venv
-WORKDIR /bot
-COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --no-dev --no-install-project
+FROM python:3.14-slim AS runtime
 
-FROM python:3.14-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH="/opt/venv/bin:$PATH"
-RUN groupadd --system bot && useradd --system --gid bot --home /bot bot
-WORKDIR /bot
-COPY --from=builder /opt/venv /opt/venv
-COPY --chown=bot:bot . .
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN groupadd --system bot && useradd --system --gid bot --home /app bot
+WORKDIR /app
+
+# Версии зафиксированы: requirements.txt — экспорт из uv.lock
+COPY requirements.txt ./
+RUN pip install -r requirements.txt
+
+# Код принадлежит root: процесс bot может его читать, но не менять
+COPY . .
+
 USER bot
 CMD ["python", "main.py"]
+
+# ---------- Образ для тестов: dev-зависимости, тесты монтируются томом ----------
+FROM runtime AS test
+USER root
+RUN pip install -r requirements-dev.txt
+USER bot
+CMD ["pytest", "-v", "-p", "no:cacheprovider"]
