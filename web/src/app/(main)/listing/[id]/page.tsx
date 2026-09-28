@@ -150,7 +150,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
               </p>
 
               <div>
-                <p className="text-[32px] font-bold leading-none text-accent">
+                <p className="text-[32px] font-bold leading-none text-accent-text">
                   {formatMoney(listing.price_per_day)} {t("common.somoni")}
                   <span className="ml-1 text-base font-semibold">{t("listing.pricePerDay")}</span>
                 </p>
@@ -158,7 +158,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
               <div className="rounded-[12px] bg-deposit-bg p-4">
                 <p className="text-sm font-semibold text-ink">{t("listing.deposit")}</p>
-                <p className="mt-1 text-2xl font-bold text-accent">
+                <p className="mt-1 text-2xl font-bold text-accent-text">
                   {deposit > 0 ? `${formatMoney(deposit)} ${t("common.somoni")}` : t("common.depositNone")}
                 </p>
                 <p className="mt-1 text-[13px] leading-relaxed text-ink/80">{t("listing.depositHint")}</p>
@@ -227,7 +227,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 lg:hidden">
         <div className="mx-auto flex max-w-content items-center justify-between gap-4">
           <p className="min-w-0 leading-tight">
-            <span className="block text-lg font-bold text-accent">
+            <span className="block text-lg font-bold text-accent-text">
               {t("common.perDay", { price: formatMoney(listing.price_per_day) })}
             </span>
             <span className="block truncate text-xs text-muted">

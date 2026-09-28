@@ -20,7 +20,7 @@ export function HeroEscrowCard({ className }: HeroEscrowCardProps) {
       <div>
         <p className="text-sm font-bold text-ink">Деньги заморожены</p>
         <p className="text-[13px] text-muted">
-          Депозит: <span className="font-semibold text-accent">1500 сом</span>
+          Депозит: <span className="font-semibold text-accent-text">1500 сом</span>
         </p>
       </div>
     </div>

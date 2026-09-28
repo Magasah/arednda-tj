@@ -7,7 +7,12 @@ const config: Config = {
       transparent: "transparent",
       current: "currentColor",
       primary: "#1A5276",
+      // #E67E22 — фирменный: только декор (иконки, обводки, точки, FAB-иконки). Для текста и
+      // кнопок с белым текстом — тёмные варианты ниже (WCAG AA ≥ 4.5:1, см. DESIGN_SYSTEM)
       accent: "#E67E22",
+      "accent-text": "#A95A0E",
+      "accent-btn": "#AE6217",
+      "accent-btn-hover": "#9B5714",
       background: "#F8F6F2",
       surface: "#FFFFFF",
       success: "#1E8449",

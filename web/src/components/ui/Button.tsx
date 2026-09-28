@@ -35,7 +35,7 @@ const base = cn(
 );
 
 const variants: Record<ButtonVariant, string> = {
-  accent: "bg-accent text-surface hover:bg-accent/90",
+  accent: "bg-accent-btn text-surface hover:bg-accent-btn-hover",
   primary: "bg-primary text-surface hover:bg-primary/90",
   outline: "border-2 border-primary text-primary hover:bg-primary/5",
   inverse: "bg-surface text-primary hover:bg-surface/90",

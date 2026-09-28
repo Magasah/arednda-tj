@@ -72,10 +72,10 @@ export function ListingCard({ listing, priority = false, className }: ListingCar
             {listing.title}
           </Link>
         </h3>
-        <p className="text-lg font-bold leading-tight text-accent">
+        <p className="text-lg font-bold leading-tight text-accent-text">
           {t("common.perDay", { price: formatMoney(listing.price_per_day) })}
         </p>
-        <p className="w-fit rounded-[8px] bg-deposit-bg px-2 py-0.5 text-xs font-medium text-accent">
+        <p className="w-fit rounded-[8px] bg-deposit-bg px-2 py-0.5 text-xs font-medium text-accent-text">
           {deposit > 0 ? t("common.deposit", { amount: formatMoney(deposit) }) : t("common.depositNone")}
         </p>
         <p className="mt-auto flex items-center gap-1 pt-1 text-[13px] font-medium text-ink">

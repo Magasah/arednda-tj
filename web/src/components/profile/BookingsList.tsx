@@ -99,7 +99,7 @@ export function BookingsList() {
                     to: formatDate(booking.end_date, { day: "numeric", month: "short" }),
                   })}
                 </span>
-                <span className="text-[13px] font-semibold text-accent">
+                <span className="text-[13px] font-semibold text-accent-text">
                   {t("profile.bookingTotal", { amount: formatMoney(booking.total_price) })}
                 </span>
               </span>

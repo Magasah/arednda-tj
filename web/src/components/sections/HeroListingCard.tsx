@@ -29,8 +29,8 @@ export function HeroListingCard({
       </div>
       <div className="space-y-1 p-2">
         <p className="truncate text-[9px] font-semibold text-ink">{title}</p>
-        <p className="whitespace-nowrap text-[10px] font-bold text-accent">{price} сом/день</p>
-        <p className="w-fit whitespace-nowrap rounded-[4px] bg-deposit-bg px-1 py-0.5 text-[7px] font-medium text-accent">
+        <p className="whitespace-nowrap text-[10px] font-bold text-accent-text">{price} сом/день</p>
+        <p className="w-fit whitespace-nowrap rounded-[4px] bg-deposit-bg px-1 py-0.5 text-[7px] font-medium text-accent-text">
           Депозит: {deposit} сом
         </p>
         <p className="flex items-center gap-0.5 text-[8px] font-medium text-ink">
