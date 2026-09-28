@@ -1,5 +1,6 @@
 import { Footer } from "./Footer";
 import { Navbar } from "./Navbar";
+import { PostListingFab } from "./PostListingButton";
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ export function PageLayout({ children }: PageLayoutProps) {
         {children}
       </main>
       <Footer />
+      <PostListingFab />
     </>
   );
 }

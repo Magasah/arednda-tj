@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { MobileNav } from "./MobileNav";
 import { NavAuth } from "./NavAuth";
 import { navLinks } from "./navLinks";
+import { PostListingButton } from "./PostListingButton";
 
 export function isActiveLink(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -64,6 +65,7 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <PostListingButton className="hidden md:inline-flex" />
           <NavAuth className="hidden md:flex" />
           <MobileNav pathname={pathname} />
         </div>

@@ -26,3 +26,10 @@ export function getMyBookings(role: "renter" | "owner" = "renter") {
     cache: "no-store",
   });
 }
+
+/** Фото паспорта → приватное хранилище backend. Сейчас подтверждается автоматически (заглушка) */
+export function verifyPassport(photo: File) {
+  const form = new FormData();
+  form.set("passport_photo", photo, photo.name);
+  return bffClient.request<MeResponse>("/api/proxy/users/me/verify", { method: "POST", body: form });
+}

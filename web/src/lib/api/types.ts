@@ -157,16 +157,132 @@ export interface BookingListing {
   price_per_day: string;
 }
 
+export interface Participant {
+  id: string;
+  name: string | null;
+  avatar_url: string | null;
+}
+
+export type EscrowStatus = "frozen" | "released" | "returned" | "partial_returned";
+
+export interface Escrow {
+  id: string;
+  amount: string;
+  deposit: string;
+  status: EscrowStatus;
+  provider: string;
+  frozen_at: string | null;
+  released_at: string | null;
+  payout_amount: string | null;
+  deposit_refund_amount: string | null;
+  deposit_returned_at: string | null;
+}
+
+export interface Handover {
+  id: string;
+  photos_before: string[];
+  photos_after: string[] | null;
+  handover_at: string | null;
+  return_at: string | null;
+}
+
 export interface BookingDetail {
   id: string;
   listing: BookingListing;
   renter_id: string;
   owner_id: string;
+  renter: Participant;
+  owner: Participant;
   start_date: string;
   end_date: string;
   days: number;
   total_price: string;
   deposit_amount: string;
   status: BookingStatus;
+  payment_expires_at: string | null;
+  escrow: Escrow | null;
+  handover: Handover | null;
+  created_at: string;
+  /** Оставил ли текущий пользователь отзыв по сделке */
+  reviewed_by_me: boolean | null;
+}
+
+export interface BookingCreated {
+  booking: BookingDetail;
+  payment_url: string;
+  expires_at: string;
+}
+
+export type PaymentMethod = "alif" | "humo" | "cash";
+
+export interface ReturnResult {
+  status: BookingStatus;
+  awaiting_owner_confirmation: boolean;
+  overdue_days: number;
+  penalty_amount: string;
+  message: string;
+}
+
+export interface ConfirmReturnResult {
+  status: BookingStatus;
+  payout_amount: string | null;
+  deposit_returned: boolean;
+  deposit_refund_amount: string | null;
+  penalty_amount: string;
+}
+
+/** Занятый период [start_date, end_date): день end_date свободен */
+export interface BusyPeriod {
+  start_date: string;
+  end_date: string;
+}
+
+// --- Мои объявления -----------------------------------------------------------------------
+
+export interface MyListing extends ListingCard {
+  status: ListingStatus;
+  updated_at: string;
+}
+
+export interface ListingUpdate {
+  title?: string;
+  description?: string | null;
+  category_slug?: string;
+  price_per_day?: string;
+  deposit_amount?: string;
+  city?: string;
+  lat?: number | null;
+  lng?: number | null;
+  status?: "active" | "inactive";
+  photos?: string[];
+}
+
+// --- Отзывы -------------------------------------------------------------------------------
+
+export interface ReviewItem {
+  id: string;
+  rating: number;
+  text: string | null;
+  author: Participant;
+  listing_title: string;
+  about_role: "owner" | "renter";
+  created_at: string;
+}
+
+export interface ReviewPage {
+  items: ReviewItem[];
+  total: number;
+  page: number;
+  pages: number;
+  avg_rating: number | null;
+  rating_distribution: Record<string, number>;
+}
+
+export interface ReviewCreated {
+  id: string;
+  booking_id: string;
+  rating: number;
+  text: string | null;
+  is_hidden: boolean;
   created_at: string;
 }

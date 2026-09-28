@@ -2,6 +2,7 @@
 // Подстановки: {name} → t("key", { name: "..." })
 
 import { ruContent } from "./ru.content";
+import { ruRental } from "./ru.rental";
 
 export const ru = {
   common: {
@@ -306,6 +307,7 @@ export const ru = {
     },
     categoryHome: "Для дома",
   },
+  ...ruRental,
   content: ruContent,
 } as const;
 
