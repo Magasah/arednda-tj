@@ -17,6 +17,24 @@
 ```
 ---
 ## 🟢 Записи работ (newest first)
+## [2026-09-28 16:30] — ПОЛНЫЙ ЦИКЛ АРЕНДЫ НА САЙТЕ
+- Задача: размещение объявления, бронирование, оплата, фото-акты, возврат, отзывы, кабинет; A11y 100, E2E, производительность, безопасность.
+- Что сделал:
+  - Backend: GET /listings/{id}/busy-dates, GET /users/me/listings (со скрытыми), фильтр owner_id, удаление (deleted_at) ≠ скрытие (inactive), порядок фото через PATCH, в брони — участники и reviewed_by_me. Миграция 0006. Pytest: 110 passed.
+  - A11y-контраст: токены accent-text #A95A0E, accent-btn #AE6217, accent-btn-hover #9B5714 (цвета из ТЗ AA не проходят — обоснование в DESIGN_SYSTEM.md). Бейджи «В аренде/Завершена» — сплошной зелёный (светло-зелёный давал 4.1:1).
+  - Мастер /listing/new (6 шагов, react-hook-form + zod, черновик в sessionStorage, Leaflet, drag-drop фото с magic bytes и сжатием), /listing/[id]/edit (синхронизация фото, удаление), «+ Разместить» в шапке и FAB на мобиле.
+  - Бронь: календарь (react-day-picker, занятые даты зачёркнуты, до 30 дней), расчёт, /booking/[id] с этапами и действиями по роли, оплата Alif/Humo/наличные, фото-акт 3 слота (camera, сжатие), подтверждение возврата с фото до/после.
+  - Отзывы: 5 звёзд + текст, честное «на проверке» при скрытии антифродом; /user/[id] — гистограмма и страницы ?page=; на карточке — отзывы об арендаторах.
+  - Кабинет: 4 вкладки (?tab=), меню «…» (редактировать/скрыть/удалить), фильтры броней, имя на месте, аватар с кадрированием, паспорт, уведомления (заглушка).
+  - Безопасность: CSRF double-submit (kiroya_csrf + X-CSRF-Token), BFF /api/proxy/* с белым списком, middleware на /listing/new, /listing/*/edit, /booking/*, лимиты клиента (5 объявлений/час, 1 отзыв на сделку, OTP 60 с).
+  - Производительность: SSR личных страниц с токеном из cookie (без кэша), ISR 60 с для каталога и карточки, ленивые PhotoUploader/календарь/Leaflet/кроппер, npm run analyze. Общий JS 88 КБ gzip.
+  - Тесты: vitest 90, Playwright e2e/full-flow.spec.ts (2 пользователя, весь цикл) + CI job web-e2e.
+- Проверка: docker compose (реальный MinIO, bucket kiroya-listings: listings/ публично, private/ — 403), E2E зелёный на прод-сборке, Lighthouse (mobile) 7 страниц: Perf 90–97, A11y 100, BP 100, CLS 0. SEO 66–69 только на noindex-страницах (так и задумано). Скриншоты: docs/screenshots/rental/.
+- Не сделано: уведомления (polling) — на backend нет эндпоинта, блок пропущен по ТЗ. Тайлы OSM в песочнице не грузятся (сеть), в браузере пользователя — работают.
+- Файлы изменены: backend/app/services/{listings,users,booking}/*, backend/migrations/versions/0006, web/src/components/{listing-form,booking,reviews,profile}/*, web/src/app/(main)/{listing,booking,profile,user}/*, web/src/app/api/proxy/*, web/src/lib/{auth,api,dates,files,rateLimit,compress}*, web/e2e/*, .github/workflows/ci.yml, docs/DESIGN_SYSTEM.md
+- Статус: ЗАВЕРШЕНО
+- Следующий шаг: смёржить PR #1 → #2 → этот PR; обновить DESIGN_SYSTEM и WORK_LOG в Notion; эндпоинт уведомлений на backend и polling на сайте; реальная интеграция Alif Pay.
+
 ## [2026-09-27 17:30] — САЙТ: КАТАЛОГ, ВХОД ПО SMS, ПРОФИЛЬ, БЕЗОПАСНОСТЬ
 - Задача: превратить web/ из лендинга в продукт: API-клиент и store, 11 страниц, общие компоненты, безопасность, адаптивность и a11y, SEO, обработка ошибок, i18n-подготовка, тесты
 - Что сделал:
