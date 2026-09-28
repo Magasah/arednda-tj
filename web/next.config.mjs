@@ -18,7 +18,8 @@ const csp = [
   // 'unsafe-inline' — инлайн-скрипты гидрации Next.js; 'unsafe-eval' — только dev (fast refresh)
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https:",
+  // blob: — превью выбранных фото до загрузки (URL.createObjectURL)
+  "img-src 'self' data: blob: https:",
   `connect-src ${connectSrc.join(" ")}${isDev ? " ws:" : ""}`,
   "font-src 'self' data:",
   "object-src 'none'",

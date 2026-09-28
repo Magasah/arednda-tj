@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { isSameOriginRequest } from "./csrf";
+import { matchProxyRoute } from "./proxyRoutes";
 import { clientIp } from "./server";
 
 vi.mock("server-only", () => ({}));
@@ -36,8 +37,16 @@ describe("clientIp: IP посетителя для rate limit", () => {
   });
 });
 
+const TOKEN = "a".repeat(64);
+
 describe("CSRF: isSameOriginRequest", () => {
-  const ok = { host: "localhost:3000", origin: "http://localhost:3000", "x-requested-with": "kiroya" };
+  const ok = {
+    host: "localhost:3000",
+    origin: "http://localhost:3000",
+    "x-requested-with": "kiroya",
+    cookie: `kiroya_csrf=${TOKEN}`,
+    "x-csrf-token": TOKEN,
+  };
 
   it("свой Origin + X-Requested-With → пропускает", () => {
     expect(isSameOriginRequest(req(ok))).toBe(true);
@@ -56,8 +65,41 @@ describe("CSRF: isSameOriginRequest", () => {
   });
 
   it("POST без Origin → отклоняет, GET без Origin (тот же сайт) → пропускает", () => {
-    const headers = { host: ok.host, "x-requested-with": "kiroya" };
+    const headers = { host: ok.host, "x-requested-with": "kiroya", cookie: ok.cookie, "x-csrf-token": TOKEN };
     expect(isSameOriginRequest(req(headers, "POST"))).toBe(false);
     expect(isSameOriginRequest(req(headers, "GET"))).toBe(true);
+  });
+
+  it("double-submit: без токена, с чужим токеном или без cookie → отклоняет", () => {
+    const without = (name: keyof typeof ok) =>
+      Object.fromEntries(Object.entries(ok).filter(([key]) => key !== name));
+    expect(isSameOriginRequest(req(without("x-csrf-token")))).toBe(false);
+    expect(isSameOriginRequest(req({ ...ok, "x-csrf-token": "b".repeat(64) }))).toBe(false);
+    expect(isSameOriginRequest(req(without("cookie")))).toBe(false);
+  });
+
+  it("GET не требует токена (не изменяет данные)", () => {
+    const plain = { host: ok.host, origin: ok.origin, "x-requested-with": "kiroya" };
+    expect(isSameOriginRequest(req(plain, "GET"))).toBe(true);
+  });
+});
+
+describe("BFF-прокси: белый список", () => {
+  const id = "01a0dd57-d538-753e-8323-311ca4ed9c8c";
+
+  it("пропускает действия сделки и объявления", () => {
+    expect(matchProxyRoute("POST", "listings")?.body).toBe("multipart");
+    expect(matchProxyRoute("PATCH", `listings/${id}`)).not.toBeNull();
+    expect(matchProxyRoute("POST", `bookings/${id}/handover`)?.body).toBe("multipart");
+    expect(matchProxyRoute("POST", `bookings/${id}/confirm-return`)?.body).toBe("json");
+    expect(matchProxyRoute("POST", "reviews")).not.toBeNull();
+  });
+
+  it("служебные и чужие пути — нет", () => {
+    expect(matchProxyRoute("POST", "users/me/telegram")).toBeNull();
+    expect(matchProxyRoute("DELETE", "reviews/x")).toBeNull();
+    expect(matchProxyRoute("POST", `bookings/${id}/../../admin`)).toBeNull();
+    expect(matchProxyRoute("GET", "listings")).toBeNull();
+    expect(matchProxyRoute("PATCH", "listings/not-a-uuid")).toBeNull();
   });
 });

@@ -39,9 +39,15 @@ describe("middleware: защищённые страницы", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  it("публичные страницы не трогает", () => {
-    const response = middleware(request("/catalog"));
-    expect(response.headers.get("location")).toBeNull();
+  it("публичные страницы не трогает (и карточку объявления тоже)", () => {
+    expect(middleware(request("/catalog")).headers.get("location")).toBeNull();
+    expect(middleware(request("/listing/abc")).headers.get("location")).toBeNull();
+  });
+
+  it.each(["/listing/new", "/listing/abc/edit", "/booking/abc"])("%s без входа → /login?next=…", (path) => {
+    const location = new URL(middleware(request(path)).headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("next")).toBe(path);
   });
 });
 

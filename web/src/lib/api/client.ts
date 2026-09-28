@@ -1,3 +1,4 @@
+import { CSRF_COOKIE, CSRF_TOKEN_HEADER } from "@/lib/auth/constants";
 import { API_PREFIX, PUBLIC_API_URL } from "@/lib/env";
 
 import { errorFromResponse, networkError } from "./errors";
@@ -32,6 +33,8 @@ export interface ApiClientConfig {
   fetchImpl?: typeof fetch;
   credentials?: RequestCredentials;
   defaultHeaders?: Record<string, string>;
+  /** Заголовки, которые считаются на каждый запрос (например, CSRF-токен из cookie) */
+  prepareHeaders?: (method: Method) => Promise<Record<string, string>>;
   authHooks?: () => AuthHooks | null;
 }
 
@@ -64,9 +67,11 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   };
 
   async function send(path: string, options: RequestOptions, token: string | null) {
+    const method = options.method ?? "GET";
     const headers: Record<string, string> = {
       Accept: "application/json",
       ...config.defaultHeaders,
+      ...(config.prepareHeaders ? await config.prepareHeaders(method) : {}),
       ...options.headers,
     };
     let body: BodyInit | undefined;
@@ -79,7 +84,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     if (token) headers.Authorization = `Bearer ${token}`;
 
     const init: RequestInit & { next?: RequestOptions["next"] } = {
-      method: options.method ?? "GET",
+      method,
       headers,
       body,
       signal: options.signal,
@@ -140,8 +145,40 @@ export const apiClient = createApiClient({
 export const CSRF_HEADER = "x-requested-with";
 export const CSRF_VALUE = "kiroya";
 
+export function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${name}=`;
+  const found = document.cookie.split("; ").find((part) => part.startsWith(prefix));
+  return found ? decodeURIComponent(found.slice(prefix.length)) : null;
+}
+
+let csrfLoading: Promise<unknown> | null = null;
+
+/**
+ * Double-submit CSRF: токен из cookie kiroya_csrf → заголовок X-CSRF-Token.
+ * Cookie ставит /api/auth/session при загрузке сайта; если её нет — один раз запрашиваем
+ */
+export async function csrfHeaders(method: Method): Promise<Record<string, string>> {
+  if (method === "GET") return {};
+  let token = readCookie(CSRF_COOKIE);
+  if (!token) {
+    csrfLoading ??= fetch("/api/auth/csrf", {
+      credentials: "same-origin",
+      headers: { [CSRF_HEADER]: CSRF_VALUE },
+    })
+      .catch(() => null)
+      .finally(() => {
+        csrfLoading = null;
+      });
+    await csrfLoading;
+    token = readCookie(CSRF_COOKIE);
+  }
+  return token ? { [CSRF_TOKEN_HEADER]: token } : {};
+}
+
 export const bffClient = createApiClient({
   baseUrl: "",
   credentials: "same-origin",
   defaultHeaders: { [CSRF_HEADER]: CSRF_VALUE },
+  prepareHeaders: csrfHeaders,
 });

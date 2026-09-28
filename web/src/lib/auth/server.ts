@@ -7,6 +7,7 @@ import { API_PREFIX, serverApiUrl } from "@/lib/env";
 import {
   ACCESS_COOKIE,
   ACCESS_FALLBACK_MAX_AGE,
+  CSRF_COOKIE,
   REFRESH_COOKIE,
   REFRESH_COOKIE_PATH,
   REFRESH_MAX_AGE,
@@ -84,6 +85,25 @@ export function clearSessionCookies(response: NextResponse) {
   response.cookies.set(ACCESS_COOKIE, "", { ...baseCookie, path: "/", maxAge: 0 });
   response.cookies.set(REFRESH_COOKIE, "", { ...baseCookie, path: REFRESH_COOKIE_PATH, maxAge: 0 });
   response.cookies.set(SESSION_FLAG_COOKIE, "", { ...baseCookie, path: "/", maxAge: 0 });
+}
+
+/** 32 случайных байта → hex (Web Crypto: работает и в Node, и в edge) */
+export function newCsrfToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/** Выдать CSRF-токен, если его ещё нет. Не httpOnly — его читает bffClient */
+export function ensureCsrfCookie(request: NextRequest, response: NextResponse) {
+  if (/^[a-f0-9]{64}$/.test(request.cookies.get(CSRF_COOKIE)?.value ?? "")) return;
+  response.cookies.set(CSRF_COOKIE, newCsrfToken(), {
+    httpOnly: false,
+    secure,
+    sameSite: "strict",
+    path: "/",
+    maxAge: REFRESH_MAX_AGE,
+  });
 }
 
 /** Новый access по refresh-cookie. null — refresh нет или он отозван/просрочен */

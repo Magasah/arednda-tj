@@ -10,3 +10,11 @@ export const SESSION_FLAG_COOKIE = "kiroya_session";
 export const REFRESH_COOKIE_PATH = "/api";
 export const REFRESH_MAX_AGE = 30 * 24 * 60 * 60;
 export const ACCESS_FALLBACK_MAX_AGE = 15 * 60;
+
+/**
+ * CSRF double-submit токен. Ставят API routes (GET /api/auth/session и /api/auth/csrf).
+ * Не httpOnly: JS страницы читает его и повторяет в заголовке X-CSRF-Token.
+ * Чужой сайт не может ни прочитать cookie, ни выставить заголовок — запрос отклоняется
+ */
+export const CSRF_COOKIE = "kiroya_csrf";
+export const CSRF_TOKEN_HEADER = "x-csrf-token";

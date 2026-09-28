@@ -6,6 +6,7 @@ import { isSameOriginRequest } from "@/lib/auth/csrf";
 import {
   backendFetch,
   clearSessionCookies,
+  ensureCsrfCookie,
   jsonError,
   refreshAccess,
   relay,
@@ -107,12 +108,21 @@ async function session(request: NextRequest) {
       clearSessionCookies(result);
     }
     result.headers.set("Cache-Control", "no-store");
+    ensureCsrfCookie(request, result);
     return result;
   }
 
   const result = NextResponse.json({ accessToken: access, user });
   if (refreshed) setAccessCookie(result, access);
   result.headers.set("Cache-Control", "no-store");
+  ensureCsrfCookie(request, result);
+  return result;
+}
+
+/** Только выдать CSRF-токен (если cookie потерялась до первого изменяющего запроса) */
+async function csrf(request: NextRequest) {
+  const result = new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+  ensureCsrfCookie(request, result);
   return result;
 }
 
@@ -154,7 +164,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   return guarded(request, handler);
 }
 
+const getHandlers: Record<string, (request: NextRequest) => Promise<NextResponse>> = { session, csrf };
+
 export async function GET(request: NextRequest, { params }: RouteContext) {
-  if (params.action.join("/") !== "session") return jsonError("Не найдено", 404);
-  return guarded(request, session);
+  const handler = getHandlers[params.action.join("/")];
+  if (!handler) return jsonError("Не найдено", 404);
+  return guarded(request, handler);
 }
