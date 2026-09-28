@@ -12,11 +12,14 @@ export const metadata: Metadata = pageMetadata({
   noIndex: true,
 });
 
+// Личная страница: всегда свежая, без кэша
+export const dynamic = "force-dynamic";
+
 // Защита: middleware (нет cookie → /login) + ProtectedRoute (сессия истекла → /login)
-export default function ProfilePage() {
+export default function ProfilePage({ searchParams }: { searchParams?: { tab?: string } }) {
   return (
     <ProtectedRoute fallback={<ProfileSkeleton />}>
-      <ProfileView />
+      <ProfileView initialTab={searchParams?.tab} />
     </ProtectedRoute>
   );
 }

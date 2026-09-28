@@ -1,10 +1,8 @@
 "use client";
 
-import { PackageOpen, ServerCrash } from "lucide-react";
+import { ServerCrash } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { ListingCard } from "@/components/listing/ListingCard";
-import { gridClasses } from "@/components/listing/grid";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -15,7 +13,8 @@ import { getMyProfile } from "@/lib/api/users";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/lib/store/auth";
 
-import { BookingsList } from "./BookingsList";
+import { BookingsTab } from "./BookingsTab";
+import { MyListingsTab } from "./MyListingsTab";
 import { ProfileHeader } from "./ProfileHeader";
 import { ProfileTabs } from "./ProfileTabs";
 import { SettingsPanel } from "./SettingsPanel";
@@ -44,7 +43,17 @@ export function ProfileSkeleton() {
   );
 }
 
-export function ProfileView() {
+export const PROFILE_TABS = ["listings", "bookings", "incoming", "settings"] as const;
+
+/** Вкладка в адресе (?tab=bookings) — ссылки «Все брони» и возврат «Назад» ведут на нужную */
+function syncTab(id: string) {
+  const url = new URL(window.location.href);
+  if (id === PROFILE_TABS[0]) url.searchParams.delete("tab");
+  else url.searchParams.set("tab", id);
+  window.history.replaceState(window.history.state, "", url);
+}
+
+export function ProfileView({ initialTab }: { initialTab?: string }) {
   const [profile, setProfile] = useState<MeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const createdAt = useAuthStore((state) => state.user?.created_at ?? null);
@@ -93,34 +102,15 @@ export function ProfileView() {
         <div className="mt-6">
           <ProfileTabs
             label={t("profile.tabs")}
+            initialId={initialTab}
+            onChange={syncTab}
             tabs={[
-              {
-                id: "listings",
-                label: t("profile.myListings"),
-                content:
-                  profile.active_listings.length > 0 ? (
-                    <>
-                      <h2 className="sr-only">{t("profile.myListings")}</h2>
-                      <ul className={gridClasses}>
-                        {profile.active_listings.map((listing) => (
-                          <li key={listing.id}>
-                            <ListingCard listing={listing} />
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <EmptyState
-                      icon={<PackageOpen className="size-7" />}
-                      title={t("profile.listingsEmptyTitle")}
-                      text={t("profile.listingsEmptyText")}
-                    />
-                  ),
-              },
-              { id: "bookings", label: t("profile.myBookings"), content: <BookingsList /> },
+              { id: "listings", label: t("account.tabs.listings"), content: <MyListingsTab /> },
+              { id: "bookings", label: t("account.tabs.bookings"), content: <BookingsTab role="renter" /> },
+              { id: "incoming", label: t("account.tabs.incoming"), content: <BookingsTab role="owner" /> },
               {
                 id: "settings",
-                label: t("profile.settings"),
+                label: t("account.tabs.settings"),
                 content: <SettingsPanel profile={profile} onUpdated={setProfile} />,
               },
             ]}

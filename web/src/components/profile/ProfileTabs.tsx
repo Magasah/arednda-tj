@@ -13,12 +13,21 @@ export interface TabItem {
 interface ProfileTabsProps {
   label: string;
   tabs: TabItem[];
+  /** Открыть сразу эту вкладку (например, из ?tab=) */
+  initialId?: string;
+  onChange?(id: string): void;
 }
 
 /** Доступные табы (WAI-ARIA Tabs): стрелки влево/вправо, Home/End, панели связаны с вкладками */
-export function ProfileTabs({ label, tabs }: ProfileTabsProps) {
+export function ProfileTabs({ label, tabs, initialId, onChange }: ProfileTabsProps) {
   const baseId = useId();
-  const [active, setActive] = useState(tabs[0]?.id);
+  const [active, setActiveState] = useState(
+    tabs.some((tab) => tab.id === initialId) ? initialId : tabs[0]?.id,
+  );
+  const setActive = (id: string) => {
+    setActiveState(id);
+    onChange?.(id);
+  };
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const select = (index: number) => {
