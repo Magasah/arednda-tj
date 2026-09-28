@@ -8,8 +8,15 @@ import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/lib/store/auth";
 
 /** Редактировать может только владелец. Это подсказка интерфейса — права проверяет backend */
-export function EditGuard({ ownerId, children }: { ownerId: string; children: React.ReactNode }) {
-  const userId = useAuthStore((state) => state.user?.id);
+interface EditGuardProps {
+  ownerId: string;
+  /** Пользователь, которого уже узнал сервер (до восстановления сессии в браузере) */
+  viewerId?: string;
+  children: React.ReactNode;
+}
+
+export function EditGuard({ ownerId, viewerId, children }: EditGuardProps) {
+  const userId = useAuthStore((state) => state.user?.id) ?? viewerId;
   if (userId !== ownerId) {
     return (
       <EmptyState

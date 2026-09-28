@@ -6,6 +6,7 @@ import { WizardSkeleton } from "@/components/listing-form/WizardSkeleton";
 import { Container } from "@/components/ui/Container";
 import { getCategories } from "@/lib/api/listings";
 import { serverApi } from "@/lib/api/server";
+import { serverUser } from "@/lib/auth/serverSession";
 import type { Category } from "@/lib/api/types";
 import { t } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
@@ -21,11 +22,14 @@ export const metadata: Metadata = pageMetadata({
 export const dynamic = "force-dynamic";
 
 export default async function NewListingPage() {
-  const categories: Category[] = await getCategories(serverApi()).catch(() => []);
+  const [categories, user] = await Promise.all([
+    getCategories(serverApi()).catch((): Category[] => []),
+    serverUser(),
+  ]);
 
   return (
     <Container className="py-8 lg:py-12">
-      <ProtectedRoute fallback={<WizardSkeleton />}>
+      <ProtectedRoute fallback={<WizardSkeleton />} ready={Boolean(user)}>
         <ListingWizard mode="create" categories={categories} />
       </ProtectedRoute>
     </Container>

@@ -30,10 +30,12 @@ export function matchesFilter(status: BookingStatus, filter: Filter): boolean {
 interface BookingsTabProps {
   /** renter — я арендую, owner — бронируют мои вещи */
   role: "renter" | "owner";
+  /** Загружено на сервере (SSR), если вкладка открыта сразу */
+  initial?: BookingDetail[] | null;
 }
 
-export function BookingsTab({ role }: BookingsTabProps) {
-  const [bookings, setBookings] = useState<BookingDetail[] | null>(null);
+export function BookingsTab({ role, initial = null }: BookingsTabProps) {
+  const [bookings, setBookings] = useState<BookingDetail[] | null>(initial);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -44,7 +46,10 @@ export function BookingsTab({ role }: BookingsTabProps) {
       .catch((err: unknown) => setError(errorMessage(err)));
   }, [role]);
 
-  useEffect(load, [load]);
+  const hasInitial = initial !== null;
+  useEffect(() => {
+    if (!hasInitial) load();
+  }, [hasInitial, load]);
 
   if (error) {
     return (

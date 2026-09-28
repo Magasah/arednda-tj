@@ -91,9 +91,17 @@ const AFTER: Partial<Record<Exclude<OpenModal, null>, BookingStatus>> = {
   return: "return_pending",
 };
 
-export function BookingView({ id }: { id: string }) {
-  const userId = useAuthStore((state) => state.user?.id);
-  const [booking, setBooking] = useState<BookingDetail | null>(null);
+interface BookingViewProps {
+  id: string;
+  /** Бронь, загруженная на сервере (SSR) */
+  initial?: BookingDetail | null;
+  /** Кто смотрит — известно серверу до восстановления сессии в браузере */
+  viewerId?: string;
+}
+
+export function BookingView({ id, initial = null, viewerId }: BookingViewProps) {
+  const userId = useAuthStore((state) => state.user?.id) ?? viewerId;
+  const [booking, setBooking] = useState<BookingDetail | null>(initial);
   const [error, setError] = useState<{ message: string; notFound: boolean } | null>(null);
   const [modal, setModal] = useState<OpenModal>(null);
   const [cancelling, setCancelling] = useState(false);
@@ -112,7 +120,10 @@ export function BookingView({ id }: { id: string }) {
       );
   }, [id]);
 
-  useEffect(load, [load]);
+  const hasInitial = initial !== null;
+  useEffect(() => {
+    if (!hasInitial) load();
+  }, [hasInitial, load]);
 
   const afterAction = useCallback(
     (action: Exclude<OpenModal, null>) => {
@@ -211,8 +222,8 @@ export function BookingView({ id }: { id: string }) {
         <h2 id="deal-sums" className="sr-only">
           {t("deal.dates")}
         </h2>
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <dl>
             <dt className="text-[13px] text-muted">{t("deal.dates")}</dt>
             <dd className="mt-0.5 font-semibold text-ink">
               {t("deal.period", { from: formatLongDate(booking.start_date), to: formatLongDate(booking.end_date) })}
@@ -221,8 +232,8 @@ export function BookingView({ id }: { id: string }) {
               {t("booking.days", { count: booking.days, word: plural(booking.days, dayWords) })}
               {upcoming && ` · ${formatRelative(starts)}`}
             </dd>
-          </div>
-          <div className="space-y-1.5 text-[15px]">
+          </dl>
+          <dl className="space-y-1.5 text-[15px]">
             <div className="flex justify-between gap-4">
               <dt className="text-muted">{t("deal.rent")}</dt>
               <dd className="font-semibold text-ink">
@@ -241,8 +252,8 @@ export function BookingView({ id }: { id: string }) {
                 {formatMoney(pay)} {t("common.somoni")}
               </dd>
             </div>
-          </div>
-        </dl>
+          </dl>
+        </div>
         <div className="mt-4 border-t border-border pt-4">
           <PersonLink person={other} label={role === "renter" ? t("deal.owner") : t("deal.renter")} />
         </div>

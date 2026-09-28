@@ -11,7 +11,8 @@ export function PageLayout({ children }: PageLayoutProps) {
   return (
     <>
       <Navbar />
-      <main id="main" tabIndex={-1} className="flex-1 focus-visible:outline-none">
+      {/* Не ниже экрана: футер не мелькает в первом экране и не «прыгает», пока грузится контент (CLS) */}
+      <main id="main" tabIndex={-1} className="min-h-[100svh] flex-1 focus-visible:outline-none">
         {children}
       </main>
       <Footer />

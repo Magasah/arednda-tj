@@ -9,6 +9,7 @@ import { Container } from "@/components/ui/Container";
 import { isApiError } from "@/lib/api/errors";
 import { getCategories } from "@/lib/api/listings";
 import { serverApi } from "@/lib/api/server";
+import { serverUser } from "@/lib/auth/serverSession";
 import type { Category, ListingDetail } from "@/lib/api/types";
 import { t } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
@@ -39,13 +40,16 @@ export default async function EditListingPage({ params }: EditPageProps) {
     if (isApiError(error) && error.code === "not_found") notFound();
     throw error;
   }
-  const categories: Category[] = await getCategories(api).catch(() => []);
+  const [categories, user] = await Promise.all([
+    getCategories(api).catch((): Category[] => []),
+    serverUser(),
+  ]);
 
   return (
     <Container className="py-8 lg:py-12">
-      <ProtectedRoute fallback={<WizardSkeleton />}>
+      <ProtectedRoute fallback={<WizardSkeleton />} ready={Boolean(user)}>
         {/* Кнопки видны только владельцу; backend всё равно проверит права на каждом запросе */}
-        <EditGuard ownerId={listing.owner_id}>
+        <EditGuard ownerId={listing.owner_id} viewerId={user?.id}>
           <ListingWizard mode="edit" categories={categories} listing={listing} />
         </EditGuard>
       </ProtectedRoute>

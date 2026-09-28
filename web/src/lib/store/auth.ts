@@ -30,6 +30,9 @@ interface AuthState {
   expire(): void;
 }
 
+// Один запрос восстановления сессии на всех: initialize() и API-клиент ждут один и тот же промис
+let initializing: Promise<void> | null = null;
+
 const anonymous = {
   user: null,
   accessToken: null,
@@ -45,25 +48,28 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   status: "idle",
   endReason: null,
 
-  async initialize() {
-    if (get().status !== "idle") return;
+  initialize() {
+    if (get().status !== "idle") return initializing ?? Promise.resolve();
     set({ status: "loading" });
-    try {
-      const session = await authApi.getSession();
-      if (!session.user || !session.accessToken) {
+    initializing = (async () => {
+      try {
+        const session = await authApi.getSession();
+        if (!session.user || !session.accessToken) {
+          set(anonymous);
+          return;
+        }
+        set({
+          user: session.user,
+          accessToken: session.accessToken,
+          isAuthenticated: true,
+          status: "authenticated",
+          endReason: null,
+        });
+      } catch {
         set(anonymous);
-        return;
       }
-      set({
-        user: session.user,
-        accessToken: session.accessToken,
-        isAuthenticated: true,
-        status: "authenticated",
-        endReason: null,
-      });
-    } catch {
-      set(anonymous);
-    }
+    })();
+    return initializing;
   },
 
   async login(phone, code) {
@@ -114,6 +120,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
 // API-клиент берёт токен из store и зовёт refresh/expire при 401
 configureAuth({
+  ready: () => useAuthStore.getState().initialize(),
   getToken: () => useAuthStore.getState().accessToken,
   refresh: () => useAuthStore.getState().refresh(),
   onAuthFailure: () => useAuthStore.getState().expire(),

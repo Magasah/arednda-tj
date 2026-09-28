@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { BookingSkeleton, BookingView } from "@/components/booking/BookingView";
 import { Container } from "@/components/ui/Container";
+import type { BookingDetail } from "@/lib/api/types";
+import { serverAuthFetch, serverUser } from "@/lib/auth/serverSession";
 import { t } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 
@@ -23,12 +25,17 @@ export const metadata: Metadata = pageMetadata({
 // Личные данные сделки: без статики и кэша, данные грузятся с токеном участника
 export const dynamic = "force-dynamic";
 
-export default function BookingPage({ params }: BookingPageProps) {
+export default async function BookingPage({ params }: BookingPageProps) {
   if (!UUID_RE.test(params.id)) notFound();
+  // SSR без кэша с токеном участника; чужая бронь или истёкший access → решит браузер
+  const [booking, user] = await Promise.all([
+    serverAuthFetch<BookingDetail>(`/bookings/${params.id}`),
+    serverUser(),
+  ]);
   return (
     <Container className="py-8 lg:py-12">
-      <ProtectedRoute fallback={<BookingSkeleton />}>
-        <BookingView id={params.id} />
+      <ProtectedRoute fallback={<BookingSkeleton />} ready={Boolean(booking && user)}>
+        <BookingView id={params.id} initial={booking} viewerId={user?.id} />
       </ProtectedRoute>
     </Container>
   );

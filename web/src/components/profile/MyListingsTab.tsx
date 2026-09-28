@@ -38,9 +38,9 @@ function ListingsSkeleton() {
   );
 }
 
-export function MyListingsTab() {
+export function MyListingsTab({ initial = null }: { initial?: MyListing[] | null }) {
   const router = useRouter();
-  const [items, setItems] = useState<MyListing[] | null>(null);
+  const [items, setItems] = useState<MyListing[] | null>(initial);
   const [error, setError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<MyListing | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -52,7 +52,10 @@ export function MyListingsTab() {
       .catch((err: unknown) => setError(errorMessage(err)));
   }, []);
 
-  useEffect(load, [load]);
+  const hasInitial = initial !== null;
+  useEffect(() => {
+    if (!hasInitial) load();
+  }, [hasInitial, load]);
 
   /** Оптимистично: статус меняется сразу, при ошибке — откат */
   async function toggleHidden(listing: MyListing) {

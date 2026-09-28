@@ -8,7 +8,7 @@ import { Container } from "@/components/ui/Container";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { errorMessage } from "@/lib/api/errors";
-import type { MeResponse } from "@/lib/api/types";
+import type { BookingDetail, MeResponse, MyListing } from "@/lib/api/types";
 import { getMyProfile } from "@/lib/api/users";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/lib/store/auth";
@@ -53,10 +53,26 @@ function syncTab(id: string) {
   window.history.replaceState(window.history.state, "", url);
 }
 
-export function ProfileView({ initialTab }: { initialTab?: string }) {
-  const [profile, setProfile] = useState<MeResponse | null>(null);
+interface ProfileViewProps {
+  initialTab?: string;
+  /** Профиль, загруженный на сервере (SSR) */
+  initialProfile?: MeResponse | null;
+  initialListings?: MyListing[] | null;
+  initialBookings?: { role: "renter" | "owner"; items: BookingDetail[] } | null;
+  /** Дата регистрации от сервера — строка «На KIROYA с …» есть сразу, без сдвига */
+  memberSince?: string | null;
+}
+
+export function ProfileView({
+  initialTab,
+  initialProfile = null,
+  initialListings = null,
+  initialBookings = null,
+  memberSince = null,
+}: ProfileViewProps) {
+  const [profile, setProfile] = useState<MeResponse | null>(initialProfile);
   const [error, setError] = useState<string | null>(null);
-  const createdAt = useAuthStore((state) => state.user?.created_at ?? null);
+  const createdAt = useAuthStore((state) => state.user?.created_at ?? null) ?? memberSince;
 
   const load = useCallback(() => {
     setError(null);
@@ -65,7 +81,10 @@ export function ProfileView({ initialTab }: { initialTab?: string }) {
       .catch((err: unknown) => setError(errorMessage(err)));
   }, []);
 
-  useEffect(load, [load]);
+  const hasInitial = initialProfile !== null;
+  useEffect(() => {
+    if (!hasInitial) load();
+  }, [hasInitial, load]);
 
   if (error) {
     return (
@@ -105,9 +124,28 @@ export function ProfileView({ initialTab }: { initialTab?: string }) {
             initialId={initialTab}
             onChange={syncTab}
             tabs={[
-              { id: "listings", label: t("account.tabs.listings"), content: <MyListingsTab /> },
-              { id: "bookings", label: t("account.tabs.bookings"), content: <BookingsTab role="renter" /> },
-              { id: "incoming", label: t("account.tabs.incoming"), content: <BookingsTab role="owner" /> },
+              {
+                id: "listings",
+                label: t("account.tabs.listings"),
+                content: <MyListingsTab initial={initialListings} />,
+              },
+              {
+                id: "bookings",
+                label: t("account.tabs.bookings"),
+                content: (
+                  <BookingsTab
+                    role="renter"
+                    initial={initialBookings?.role === "renter" ? initialBookings.items : null}
+                  />
+                ),
+              },
+              {
+                id: "incoming",
+                label: t("account.tabs.incoming"),
+                content: (
+                  <BookingsTab role="owner" initial={initialBookings?.role === "owner" ? initialBookings.items : null} />
+                ),
+              },
               {
                 id: "settings",
                 label: t("account.tabs.settings"),

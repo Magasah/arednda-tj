@@ -21,6 +21,8 @@ export interface RequestOptions {
 
 /** Как клиент получает и обновляет access-токен. Реализует store авторизации */
 export interface AuthHooks {
+  /** Дождаться восстановления сессии (иначе первый запрос уйдёт без токена и получит 401) */
+  ready?(): Promise<void>;
   getToken(): string | null;
   /** Новый access-токен или null, если сессию не восстановить */
   refresh(): Promise<string | null>;
@@ -103,6 +105,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
   async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const hooks = options.auth ? (config.authHooks?.() ?? null) : null;
+    if (hooks?.ready) await hooks.ready();
     let response = await send(path, options, hooks?.getToken() ?? null);
 
     if (response.status === 401 && hooks) {

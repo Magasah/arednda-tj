@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { messagesOf, t } from "@/lib/i18n";
 
+// zod v4 проверяет, можно ли компилировать валидаторы через new Function — CSP сайта это
+// запрещает (нет 'unsafe-eval'), и браузер пишет нарушение CSP. Работаем без JIT
+z.config({ jitless: true });
+
 // Схема формы объявления. Цены — строками (как в поле ввода и в API: Decimal), запятая = точка
 
 export const CITIES = messagesOf().cities;
