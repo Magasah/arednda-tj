@@ -394,3 +394,28 @@ async def test_my_listings_hidden_vs_deleted(client: AsyncClient, owner: User) -
 
 async def test_my_listings_requires_auth(client: AsyncClient, env: None) -> None:
     assert (await client.get("/api/v1/users/me/listings")).status_code == 401
+
+
+async def test_reorder_photos(client: AsyncClient, owner: User) -> None:
+    files = [("photos", (f"p{i}.jpg", FAKE_JPEG, "image/jpeg")) for i in range(3)]
+    created = (await _create(client, owner, files=files)).json()
+    photos = created["photos"]
+    assert len(photos) == 3
+
+    new_order = [photos[2], photos[0], photos[1]]
+    response = await client.patch(
+        f"{URL}/{created['id']}", headers=_auth(owner), json={"photos": new_order}
+    )
+    assert response.status_code == 200
+    assert response.json()["photos"] == new_order
+
+    # Подменить или потерять фото через порядок нельзя
+    foreign = [photos[0], photos[1], "http://evil.example/x.jpg"]
+    bad = await client.patch(
+        f"{URL}/{created['id']}", headers=_auth(owner), json={"photos": foreign}
+    )
+    assert bad.status_code == 422
+    short = await client.patch(
+        f"{URL}/{created['id']}", headers=_auth(owner), json={"photos": photos[:2]}
+    )
+    assert short.status_code == 422

@@ -122,7 +122,8 @@ class ListingCreate(BaseModel):
 
 
 class ListingUpdate(BaseModel):
-    """PATCH: передаются только изменяемые поля. Фото меняются отдельными эндпоинтами."""
+    """PATCH: передаются только изменяемые поля. Фото добавляются и удаляются отдельными
+    эндпоинтами, здесь — только новый порядок (первое фото — обложка)."""
 
     model_config = ConfigDict(
         json_schema_extra={"examples": [{"price_per_day": "120.00", "city": "Душанбе"}]}
@@ -137,6 +138,11 @@ class ListingUpdate(BaseModel):
     lat: float | None = Field(default=None, ge=-90, le=90)
     lng: float | None = Field(default=None, ge=-180, le=180)
     status: Literal["active", "inactive"] | None = None
+    photos: list[str] | None = Field(
+        default=None,
+        max_length=8,
+        description="Новый порядок фото: те же URL, что у объявления, в нужном порядке",
+    )
 
     @model_validator(mode="after")
     def _coords(self) -> ListingUpdate:

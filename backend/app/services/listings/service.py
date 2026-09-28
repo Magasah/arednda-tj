@@ -274,7 +274,7 @@ async def _ensure_no_active_rental(session: AsyncSession, listing: Listing) -> N
         )
 
 
-_NOT_NULL_FIELDS = ("title", "category_slug", "price_per_day", "deposit_amount", "city")
+_NOT_NULL_FIELDS = ("title", "category_slug", "price_per_day", "deposit_amount", "city", "photos")
 
 
 async def update_listing(
@@ -292,6 +292,12 @@ async def update_listing(
         listing.category_id = await _category_id(session, changes.pop("category_slug"))
     if "status" in changes:
         listing.status = ListingStatus(changes.pop("status"))
+    if "photos" in changes:
+        order = changes.pop("photos")
+        # Только перестановка: чужой URL подставить нельзя, фото не теряются
+        if sorted(order) != sorted(listing.photos):
+            raise _unprocessable("photos: нужен тот же набор фото в новом порядке")
+        listing.photos = order
     for field, value in changes.items():
         setattr(listing, field, value.strip() if field in ("title", "city") else value)
 
