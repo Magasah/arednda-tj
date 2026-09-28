@@ -26,6 +26,8 @@ interface BookButtonProps {
 /** Гость → вход с возвратом к объявлению; владелец — своё не бронирует; остальные → календарь */
 export function BookButton({ listingId, ownerId, title, pricePerDay, deposit, disabled = false, className }: BookButtonProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  // Пока сессия восстанавливается, клик увёл бы вошедшего на /login — ждём ответа
+  const settling = useAuthStore((state) => state.status === "idle" || state.status === "loading");
   const userId = useAuthStore((state) => state.user?.id);
   const router = useRouter();
   const pathname = usePathname() ?? "/";
@@ -47,6 +49,7 @@ export function BookButton({ listingId, ownerId, title, pricePerDay, deposit, di
         size="md"
         className={className ?? "w-full"}
         disabled={disabled}
+        loading={settling && !disabled}
         onClick={() => {
           if (!isAuthenticated) {
             router.push(`/login?next=${encodeURIComponent(pathname)}`);

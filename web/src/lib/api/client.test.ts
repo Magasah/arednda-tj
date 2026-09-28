@@ -119,3 +119,28 @@ describe("API client: нормализация ошибок", () => {
     expect(fetchImpl.mock.calls[0][0]).toBe("http://api.test/api/v1/listings?q=%D0%B4%D1%80%D0%B5%D0%BB%D1%8C&page=2");
   });
 });
+
+describe("bffClient: CSRF double-submit", () => {
+  it("изменяющий запрос несёт X-CSRF-Token из cookie, GET — нет", async () => {
+    const { csrfHeaders } = await import("./client");
+    const cookie = "a".repeat(64);
+    vi.stubGlobal("document", { cookie: `other=1; kiroya_csrf=${cookie}` });
+    expect(await csrfHeaders("POST")).toEqual({ "x-csrf-token": cookie });
+    expect(await csrfHeaders("GET")).toEqual({});
+    vi.unstubAllGlobals();
+  });
+
+  it("cookie нет — сначала запрашивает /api/auth/csrf", async () => {
+    const { csrfHeaders } = await import("./client");
+    const doc = { cookie: "" };
+    vi.stubGlobal("document", doc);
+    const fetchMock = vi.fn(async () => {
+      doc.cookie = `kiroya_csrf=${"b".repeat(64)}`;
+      return new Response(null, { status: 204 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await csrfHeaders("DELETE")).toEqual({ "x-csrf-token": "b".repeat(64) });
+    expect(fetchMock).toHaveBeenCalledWith("/api/auth/csrf", expect.objectContaining({ credentials: "same-origin" }));
+    vi.unstubAllGlobals();
+  });
+});

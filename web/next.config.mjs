@@ -56,4 +56,10 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// npm run analyze → отчёт о бандлах в .next/analyze (плагин грузится только в этом режиме)
+const withBundleAnalyzer =
+  process.env.ANALYZE === "true"
+    ? (await import("@next/bundle-analyzer")).default({ enabled: true, openAnalyzer: false })
+    : (config) => config;
+
+export default withBundleAnalyzer(nextConfig);

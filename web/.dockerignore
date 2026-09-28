@@ -6,3 +6,7 @@ Dockerfile
 .dockerignore
 design/
 *.log
+e2e/
+playwright.config.ts
+test-results/
+playwright-report/

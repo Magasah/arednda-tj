@@ -34,6 +34,11 @@ const ListingGallery = dynamic(
 // ISR: карточка пересобирается не чаще раза в минуту; после правки владельцем — сразу (revalidatePath)
 export const revalidate = 60;
 
+/** Заранее ничего не собираем: карточка рендерится при первом запросе и кэшируется (ISR) */
+export function generateStaticParams(): { id: string }[] {
+  return [];
+}
+
 interface ListingPageProps {
   params: { id: string };
 }
