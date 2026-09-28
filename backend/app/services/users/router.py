@@ -9,6 +9,8 @@ from app.core.database import SessionDep
 from app.core.limiter import is_bot_request
 from app.core.security import CurrentUser
 from app.core.storage import StorageDep
+from app.services.listings import service as listings_service
+from app.services.listings.schemas import MyListing
 from app.services.reviews.trust import trust_key
 from app.services.users import service
 from app.services.users.schemas import MeResponse, UserProfile
@@ -46,6 +48,17 @@ async def update_me(
 ) -> MeResponse:
     await service.update_me(session, storage, user, name, avatar)
     return await service.me(session, cache, user)
+
+
+@router.get(
+    "/me/listings",
+    response_model=list[MyListing],
+    summary="Мои объявления",
+    description="Все свои объявления, включая скрытые (status=inactive). Удалённых нет.",
+    response_description="Объявления владельца, новые сверху",
+)
+async def my_listings(user: CurrentUser, session: SessionDep) -> list[MyListing]:
+    return await listings_service.my_listings(session, user)
 
 
 @router.post(

@@ -80,7 +80,7 @@ async def create_booking(
             total_price=booking.total_price,
         ),
     )
-    detail = await service.build_detail(session, booking, listing)
+    detail = await service.build_detail(session, booking, listing, user)
     return BookingCreatedResponse(
         booking=detail,
         payment_url=f"{settings.payment_page_url.rstrip('/')}/{booking.id}",
@@ -117,7 +117,7 @@ async def get_booking(
     booking_id: uuid.UUID, user: CurrentUser, session: SessionDep
 ) -> BookingDetail:
     booking, listing = await service.get_booking(session, booking_id, user)
-    return await service.build_detail(session, booking, listing)
+    return await service.build_detail(session, booking, listing, user)
 
 
 @router.post(
@@ -132,7 +132,7 @@ async def cancel_booking(
 ) -> BookingDetail:
     booking, listing = await service.cancel_booking(session, booking_id, user)
     await cache.delete(listing_key(listing.id))
-    return await service.build_detail(session, booking, listing)
+    return await service.build_detail(session, booking, listing, user)
 
 
 @router.post(

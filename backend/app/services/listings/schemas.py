@@ -82,6 +82,20 @@ class ListingDetail(ListingCard):
     updated_at: datetime
 
 
+class MyListing(ListingCard):
+    """Своё объявление в кабинете: вместе со скрытыми (status=inactive)."""
+
+    status: ListingStatus
+    updated_at: datetime
+
+
+class BusyPeriod(BaseModel):
+    """Занятый период [start_date, end_date): день end_date свободен для новой брони."""
+
+    start_date: date
+    end_date: date
+
+
 class ListingPage(BaseModel):
     items: list[ListingCard]
     total: int
@@ -136,6 +150,7 @@ class ListingFilters(BaseModel):
         default=None, max_length=100, description="Поиск по названию (без учёта регистра)"
     )
     category: str | None = Field(default=None, description="slug категории")
+    owner_id: uuid.UUID | None = Field(default=None, description="Только объявления владельца")
     city: str | None = None
     lat: float | None = Field(default=None, ge=-90, le=90)
     lng: float | None = Field(default=None, ge=-180, le=180)

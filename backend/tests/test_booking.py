@@ -444,3 +444,29 @@ async def test_damaged_requires_description(client: AsyncClient, deal: dict[str,
     assert response.status_code == 422
     count = await client.get(f"{URL}/{booking_id}/dispute", headers=auth(deal["owner"]))
     assert count.status_code == 404
+
+
+async def test_detail_has_participants_and_review_flag(
+    client: AsyncClient, deal: dict[str, Any]
+) -> None:
+    booking_id = await _step(client, deal, until="returned")
+    await client.post(
+        f"{URL}/{booking_id}/confirm-return",
+        headers=auth(deal["owner"]),
+        json={"condition": "good"},
+    )
+    detail = (await client.get(f"{URL}/{booking_id}", headers=auth(deal["renter"]))).json()
+    assert detail["renter"]["name"] == "Арендатор"
+    assert detail["owner"]["name"] == "Владелец"
+    assert detail["reviewed_by_me"] is False
+
+    review = await client.post(
+        "/api/v1/reviews",
+        headers=auth(deal["renter"]),
+        json={"booking_id": booking_id, "rating": 5, "text": "Всё отлично"},
+    )
+    assert review.status_code == 201, review.text
+    renter_view = (await client.get(f"{URL}/{booking_id}", headers=auth(deal["renter"]))).json()
+    owner_view = (await client.get(f"{URL}/{booking_id}", headers=auth(deal["owner"]))).json()
+    assert renter_view["reviewed_by_me"] is True
+    assert owner_view["reviewed_by_me"] is False

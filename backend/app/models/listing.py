@@ -1,6 +1,7 @@
 """Объявления аренды (таблица listings)."""
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
@@ -9,6 +10,7 @@ from sqlalchemy import (
     ARRAY,
     CheckConstraint,
     Computed,
+    DateTime,
     Float,
     ForeignKey,
     Index,
@@ -72,6 +74,8 @@ class Listing(UUIDv7PKMixin, TimestampMixin, Base):
         default=ListingStatus.ACTIVE,
         server_default=ListingStatus.ACTIVE.value,
     )
+    # Удалено владельцем (не просто скрыто): см. миграцию 0006
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     def __repr__(self) -> str:
         return f"<Listing id={self.id} title={self.title!r}>"

@@ -29,6 +29,7 @@ from app.models import (
     HandoverRecord,
     Listing,
     ListingStatus,
+    Review,
     User,
 )
 from app.models.booking import HOLDING_STATUSES
@@ -38,6 +39,7 @@ from app.services.booking.schemas import (
     ConfirmReturnRequest,
     HandoverRead,
     ListingBrief,
+    Participant,
 )
 from app.services.escrow.schemas import EscrowRead
 from app.services.escrow.service import EscrowError, EscrowService
@@ -96,13 +98,35 @@ def _check_photos(files: list[UploadFile]) -> None:
         )
 
 
-async def build_detail(session: AsyncSession, booking: Booking, listing: Listing) -> BookingDetail:
+def _participant(user: User | None, user_id: uuid.UUID) -> Participant:
+    if user is None:
+        return Participant(id=user_id, name=None, avatar_url=None)
+    return Participant(id=user.id, name=user.name, avatar_url=user.avatar_url)
+
+
+async def build_detail(
+    session: AsyncSession, booking: Booking, listing: Listing, viewer: User | None = None
+) -> BookingDetail:
+    """Карточка брони. viewer — кто смотрит: для него считается reviewed_by_me."""
     escrow = await session.scalar(
         select(EscrowTransaction).where(EscrowTransaction.booking_id == booking.id)
     )
     handover = await session.scalar(
         select(HandoverRecord).where(HandoverRecord.booking_id == booking.id)
     )
+    renter = await session.get(User, booking.renter_id)
+    owner = await session.get(User, listing.owner_id)
+    reviewed_by_me = None
+    if viewer is not None:
+        reviewed_by_me = bool(
+            await session.scalar(
+                select(
+                    exists().where(
+                        Review.booking_id == booking.id, Review.from_user_id == viewer.id
+                    )
+                )
+            )
+        )
     return BookingDetail(
         id=booking.id,
         listing=ListingBrief(
@@ -115,6 +139,8 @@ async def build_detail(session: AsyncSession, booking: Booking, listing: Listing
         ),
         renter_id=booking.renter_id,
         owner_id=listing.owner_id,
+        renter=_participant(renter, booking.renter_id),
+        owner=_participant(owner, listing.owner_id),
         start_date=booking.start_date,
         end_date=booking.end_date,
         days=(booking.end_date - booking.start_date).days,
@@ -127,6 +153,7 @@ async def build_detail(session: AsyncSession, booking: Booking, listing: Listing
         escrow=EscrowRead.model_validate(escrow) if escrow else None,
         handover=HandoverRead.model_validate(handover) if handover else None,
         created_at=booking.created_at,
+        reviewed_by_me=reviewed_by_me,
     )
 
 
@@ -158,7 +185,7 @@ async def list_bookings(
     rows = await session.execute(
         query.order_by(Booking.created_at.desc()).limit(limit).offset((page - 1) * limit)
     )
-    return [await build_detail(session, b, lst) for b, lst in rows], total
+    return [await build_detail(session, b, lst, user) for b, lst in rows], total
 
 
 # --- 1. Создание брони -----------------------------------------------------------

@@ -12,15 +12,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.storage import StorageService
+from app.core.timeutils import local_today, utcnow
 from app.models import Booking, Category, Listing, ListingStatus, Review, User
 from app.models.booking import HOLDING_STATUSES, IN_PROGRESS_STATUSES
 from app.services.listings.schemas import (
+    BusyPeriod,
     ListingCard,
     ListingCreate,
     ListingDetail,
     ListingFilters,
     ListingPage,
     ListingUpdate,
+    MyListing,
     UserShort,
 )
 from app.services.users import stats
@@ -112,6 +115,8 @@ async def list_listings(session: AsyncSession, filters: ListingFilters) -> Listi
         query = query.where(Listing.title.ilike(f"%{pattern}%", escape="\\"))
     if filters.category:
         query = query.where(Category.slug == filters.category)
+    if filters.owner_id:
+        query = query.where(Listing.owner_id == filters.owner_id)
     if filters.city:
         query = query.where(func.lower(Listing.city) == filters.city.strip().lower())
     if filters.min_price is not None:
@@ -246,7 +251,7 @@ async def get_owned_listing(
         # Блокировка строки: параллельные правки (например, фото) не затрут друг друга
         query = query.with_for_update()
     listing = await session.scalar(query)
-    if listing is None:
+    if listing is None or listing.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Объявление не найдено")
     if listing.owner_id != user.id:
         raise HTTPException(
@@ -296,9 +301,37 @@ async def update_listing(
 async def delete_listing(session: AsyncSession, listing_id: uuid.UUID, user: User) -> None:
     listing = await get_owned_listing(session, listing_id, user, for_update=True)
     await _ensure_no_active_rental(session, listing)
-    # Мягкое удаление: история сделок и фото сохраняются
+    # Мягкое удаление: история сделок и фото сохраняются, в кабинете объявления больше нет
     listing.status = ListingStatus.INACTIVE
+    listing.deleted_at = utcnow()
     await session.commit()
+
+
+async def my_listings(session: AsyncSession, user: User) -> list[MyListing]:
+    """Все объявления владельца, кроме удалённых: активные, скрытые и сданные."""
+    rows = await session.execute(
+        card_query()
+        .where(Listing.owner_id == user.id, Listing.deleted_at.is_(None))
+        .order_by(Listing.created_at.desc(), Listing.id.desc())
+    )
+    return [
+        MyListing(**card_fields(row), status=row.Listing.status, updated_at=row.Listing.updated_at)
+        for row in rows
+    ]
+
+
+async def busy_periods(session: AsyncSession, listing_id: uuid.UUID) -> list[BusyPeriod]:
+    """Будущие занятые периоды вещи — для календаря бронирования (день возврата свободен)."""
+    rows = await session.execute(
+        select(Booking.start_date, Booking.end_date)
+        .where(
+            Booking.listing_id == listing_id,
+            Booking.status.in_(HOLDING_STATUSES),
+            Booking.end_date > local_today(),
+        )
+        .order_by(Booking.start_date)
+    )
+    return [BusyPeriod(start_date=start, end_date=end) for start, end in rows]
 
 
 async def add_photos(

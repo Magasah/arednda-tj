@@ -350,3 +350,47 @@ async def test_db_forbids_overlapping_bookings(
     )
     with pytest.raises(IntegrityError, match="ex_bookings_no_overlap"):
         await db_session.flush()
+
+
+# --- Кабинет владельца и календарь бронирования --------------------------------------
+
+
+async def test_busy_dates_for_calendar(client: AsyncClient, geo_data: dict[str, Listing]) -> None:
+    busy = (await client.get(f"{URL}/{geo_data['near'].id}/busy-dates")).json()
+    assert busy == [{"start_date": "2031-10-01", "end_date": "2031-10-05"}]
+    assert (await client.get(f"{URL}/{geo_data['far'].id}/busy-dates")).json() == []
+
+
+async def test_filter_by_owner(client: AsyncClient, owner: User, stranger: User) -> None:
+    await _create(client, owner, title="Вещь владельца", city="Владелец-тест")
+    await _create(client, stranger, title="Чужая вещь", city="Владелец-тест")
+
+    params = {"city": "Владелец-тест", "owner_id": str(owner.id)}
+    body = (await client.get(URL, params=params)).json()
+    assert [item["title"] for item in body["items"]] == ["Вещь владельца"]
+
+
+async def test_my_listings_hidden_vs_deleted(client: AsyncClient, owner: User) -> None:
+    visible = (await _create(client, owner, title="Видимая")).json()["id"]
+    hidden = (await _create(client, owner, title="Скрытая")).json()["id"]
+    deleted = (await _create(client, owner, title="Удалённая")).json()["id"]
+
+    patch = await client.patch(f"{URL}/{hidden}", headers=_auth(owner), json={"status": "inactive"})
+    assert patch.status_code == 200
+    assert (await client.delete(f"{URL}/{deleted}", headers=_auth(owner))).status_code == 204
+
+    mine = (await client.get("/api/v1/users/me/listings", headers=_auth(owner))).json()
+    by_id = {item["id"]: item["status"] for item in mine}
+    assert by_id[visible] == "active"
+    assert by_id[hidden] == "inactive"  # скрытое остаётся в кабинете — его можно вернуть
+    assert deleted not in by_id
+
+    # Скрытое возвращается в ленту, удалённое больше не редактируется
+    back = await client.patch(f"{URL}/{hidden}", headers=_auth(owner), json={"status": "active"})
+    assert back.status_code == 200
+    gone = await client.patch(f"{URL}/{deleted}", headers=_auth(owner), json={"status": "active"})
+    assert gone.status_code == 404
+
+
+async def test_my_listings_requires_auth(client: AsyncClient, env: None) -> None:
+    assert (await client.get("/api/v1/users/me/listings")).status_code == 401
