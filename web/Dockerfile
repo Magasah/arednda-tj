@@ -30,8 +30,9 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 --ingroup nodejs nextjs
 
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Владелец — nextjs: ISR пишет пересобранные страницы в .next/server (иначе EACCES)
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Кэш оптимизированных картинок next/image — пользователь nextjs должен писать сюда
 RUN mkdir -p .next/cache && chown nextjs:nodejs .next/cache
 

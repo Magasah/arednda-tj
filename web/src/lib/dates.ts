@@ -1,6 +1,8 @@
 import { addDays, differenceInCalendarDays, format, formatDistanceToNowStrict, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 
+import { TIME_ZONE } from "./format";
+
 // Даты для интерфейса: «24 сентября 2026», «через 3 дня», «2 часа назад».
 // Даты брони приходят как "YYYY-MM-DD" без часового пояса — разбираем их как локальные
 
@@ -26,10 +28,18 @@ export function formatShortDate(value: string | Date): string {
   return format(date, "d MMM", { locale: ru });
 }
 
-/** «24 сентября, 14:05» */
+const dateTimeFormat = new Intl.DateTimeFormat("ru-RU", {
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: TIME_ZONE,
+});
+
+/** «24 сентября, 14:05» по времени Душанбе — одинаково на сервере и в браузере */
 export function formatDateTime(value: string): string {
   const date = parseISO(value);
-  return Number.isNaN(date.getTime()) ? value : format(date, "d MMMM, HH:mm", { locale: ru });
+  return Number.isNaN(date.getTime()) ? value : dateTimeFormat.format(date);
 }
 
 /** «через 3 дня» / «2 часа назад» */

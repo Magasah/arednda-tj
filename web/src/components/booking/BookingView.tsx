@@ -21,6 +21,7 @@ import { formatMoney } from "@/lib/format";
 import { messagesOf, plural, t } from "@/lib/i18n";
 import { mediaUrl } from "@/lib/media";
 import { useAuthStore } from "@/lib/store/auth";
+import { useMounted } from "@/lib/useMounted";
 
 import { DealSteps } from "./DealSteps";
 import { amountToPay, availableActions, type DealRole } from "./logic";
@@ -101,6 +102,7 @@ interface BookingViewProps {
 
 export function BookingView({ id, initial = null, viewerId }: BookingViewProps) {
   const userId = useAuthStore((state) => state.user?.id) ?? viewerId;
+  const mounted = useMounted();
   const [booking, setBooking] = useState<BookingDetail | null>(initial);
   const [error, setError] = useState<{ message: string; notFound: boolean } | null>(null);
   const [modal, setModal] = useState<OpenModal>(null);
@@ -230,7 +232,7 @@ export function BookingView({ id, initial = null, viewerId }: BookingViewProps) 
             </dd>
             <dd className="text-[13px] text-muted">
               {t("booking.days", { count: booking.days, word: plural(booking.days, dayWords) })}
-              {upcoming && ` · ${formatRelative(starts)}`}
+              {mounted && upcoming && ` · ${formatRelative(starts)}`}
             </dd>
           </dl>
           <dl className="space-y-1.5 text-[15px]">

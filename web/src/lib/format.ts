@@ -13,10 +13,16 @@ export function formatRating(value: number | string | null | undefined): string 
   return rating == null || !Number.isFinite(rating) ? "—" : rating.toFixed(1);
 }
 
+/** Часовой пояс сервиса: сервер (UTC в docker) и браузер форматируют одинаково — нет ошибок гидрации */
+export const TIME_ZONE = "Asia/Dushanbe";
+
 export function formatDate(value: string, options?: Intl.DateTimeFormatOptions): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(locale, options ?? { day: "numeric", month: "long", year: "numeric" });
+  return date.toLocaleDateString(locale, {
+    ...(options ?? { day: "numeric", month: "long", year: "numeric" }),
+    timeZone: TIME_ZONE,
+  });
 }
 
 /** «с сентября 2026 г.»: месяц в родительном падеже (Intl даёт его только вместе с числом) */
