@@ -2,17 +2,18 @@ import { Container } from "@/components/ui/Container";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import type { KiroyaIconName } from "@/lib/kiroyaIcons";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { CategoryCard } from "./CategoryCard";
 
-const categories: { icon: KiroyaIconName; label: string; hint: string }[] = [
-  { icon: "kiroya-laptop", label: "Техника", hint: "ноутбуки, планшеты" },
-  { icon: "kiroya-wrench", label: "Инструменты", hint: "перфораторы, сварка" },
-  { icon: "kiroya-scooter", label: "Транспорт", hint: "самокаты, велосипеды" },
-  { icon: "kiroya-camera", label: "Фото и видео", hint: "камеры, объективы" },
-  { icon: "kiroya-tent", label: "Мероприятия", hint: "звук, свет, проекторы" },
-  { icon: "kiroya-home", label: "Для дома", hint: "уборка, ремонт, дача" },
+const categories: { icon: KiroyaIconName; label: string; hint: string; href: string }[] = [
+  { icon: "kiroya-laptop", label: t("categories.tech"), hint: t("home.categoryHints.tech"), href: "/catalog/tech" },
+  { icon: "kiroya-wrench", label: t("categories.tools"), hint: t("home.categoryHints.tools"), href: "/catalog/tools" },
+  { icon: "kiroya-scooter", label: t("categories.transport"), hint: t("home.categoryHints.transport"), href: "/catalog/transport" },
+  { icon: "kiroya-camera", label: t("categories.photo"), hint: t("home.categoryHints.photo"), href: "/catalog/photo" },
+  { icon: "kiroya-tent", label: t("categories.events"), hint: t("home.categoryHints.events"), href: "/catalog/events" },
+  { icon: "kiroya-home", label: t("home.categoryHome"), hint: t("home.categoryHints.home"), href: "/catalog" },
 ];
 
 export function CategoriesSection() {
@@ -25,8 +26,8 @@ export function CategoriesSection() {
       <Container>
         <SectionHeading
           id="categories-title"
-          title="Категории"
-          description="Зачем покупать то, что нужно на пару дней? Возьми у соседа."
+          title={t("home.categoriesTitle")}
+          description={t("home.categoriesText")}
         />
       </Container>
 

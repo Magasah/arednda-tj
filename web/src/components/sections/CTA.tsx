@@ -2,6 +2,7 @@ import { Container } from "@/components/ui/Container";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { StoreButton } from "@/components/ui/StoreButton";
 import { TajikPattern } from "@/components/ui/TajikPattern";
+import { t } from "@/lib/i18n";
 
 export function CTASection() {
   return (
@@ -20,11 +21,10 @@ export function CTASection() {
                 id="download-title"
                 className="text-[32px] font-extrabold leading-tight tracking-tight text-primary sm:text-5xl"
               >
-                Готов арендовать?
+                {t("home.ctaTitle")}
               </h2>
               <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
-                Скачай KIROYA и найди нужную вещь в пару касаний. Или сдай свою —
-                и зарабатывай на том, что лежит без дела.
+                {t("home.ctaText")}
               </p>
 
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">

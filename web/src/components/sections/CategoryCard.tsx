@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Icon } from "@/components/ui/Icon";
 import type { KiroyaIconName } from "@/lib/kiroyaIcons";
 import { cn } from "@/lib/utils";
@@ -6,12 +8,13 @@ interface CategoryCardProps {
   icon: KiroyaIconName;
   label: string;
   hint: string;
+  href: string;
 }
 
-export function CategoryCard({ icon, label, hint }: CategoryCardProps) {
+export function CategoryCard({ icon, label, hint, href }: CategoryCardProps) {
   return (
-    <a
-      href="#download"
+    <Link
+      href={href}
       className={cn(
         "flex h-full flex-col items-center gap-3",
         "rounded-card border border-transparent px-4 py-6 text-center",
@@ -24,6 +27,6 @@ export function CategoryCard({ icon, label, hint }: CategoryCardProps) {
       </span>
       <span className="text-[15px] font-semibold text-ink">{label}</span>
       <span className="text-[13px] text-muted">{hint}</span>
-    </a>
+    </Link>
   );
 }

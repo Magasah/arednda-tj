@@ -34,3 +34,69 @@
     }
   }
 }
+
+@layer utilities {
+  /* Анимации модалки: ≤200ms ease-out (DESIGN_SYSTEM) */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Календарь бронирования (react-day-picker): цвета DS. Двойной класс — перебить стили библиотеки */
+.rdp-root.kiroya-rdp {
+  --rdp-accent-color: #1a5276;
+  --rdp-accent-background-color: #e3edf4;
+  --rdp-range_middle-background-color: #e3edf4;
+  --rdp-range_middle-color: #1c1c1e;
+  --rdp-today-color: #a95a0e;
+  --rdp-day-height: 40px;
+  --rdp-day-width: 40px;
+  --rdp-day_button-height: 40px;
+  --rdp-day_button-width: 40px;
+  --rdp-disabled-opacity: 1;
+  margin: 0 auto;
+}
+
+.kiroya-rdp .rdp-disabled {
+  color: #6b7280;
+}
+
+/* Занятые дни — зачёркнуты (не только цветом: WCAG 1.4.1) */
+.kiroya-rdp .rdp-busy .rdp-day_button {
+  text-decoration: line-through;
+  background: #f3f4f6;
+  color: #6b7280;
+}

@@ -4,18 +4,18 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
-import { FadeInUp } from "@/components/ui/FadeInUp";
 import { PhoneFrame } from "@/components/ui/PhoneFrame";
 import { TajikPattern } from "@/components/ui/TajikPattern";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 import { HeroAppScreen } from "./HeroAppScreen";
 import { HeroEscrowCard } from "./HeroEscrowCard";
 
 const trustBadges = [
-  { icon: "kiroya-shield-check", label: "Деньги защищены" },
-  { icon: "kiroya-photo-act", label: "Фото-акт" },
-  { icon: "kiroya-star-badge", label: "Рейтинг мастеров" },
+  { icon: "kiroya-shield-check", label: t("home.trustMoney") },
+  { icon: "kiroya-photo-act", label: t("home.trustPhoto") },
+  { icon: "kiroya-star-badge", label: t("home.trustRating") },
 ] as const;
 
 export function HeroSection() {
@@ -29,9 +29,10 @@ export function HeroSection() {
         alt=""
         fill
         priority
-        sizes="100vw"
+        sizes="(min-width: 640px) 100vw, 1px"
         quality={60}
-        className="object-cover"
+        // На мобиле фото под плотной подложкой почти не видно, а грузится дольше всего — только с sm
+        className="hidden object-cover sm:block"
       />
       <div aria-hidden className="absolute inset-0 bg-background/85" />
       <TajikPattern id="hero-ornament" className="text-primary opacity-[0.06]" />
@@ -39,31 +40,30 @@ export function HeroSection() {
       <Container className="relative pb-14 pt-10 sm:pt-14 lg:pb-20 lg:pt-16">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8">
           <div className="text-center lg:text-left">
-            <FadeInUp>
-              <h1
-                id="hero-title"
-                className={cn(
-                  "text-[40px] font-extrabold leading-[1.05] tracking-tight",
-                  "text-primary sm:text-[52px] xl:text-[64px]",
-                )}
-              >
-                Арендуй всё —<br />
-                рядом с тобой
-              </h1>
-            </FadeInUp>
+            {/* Заголовок — кандидат в LCP: виден сразу, без анимации появления */}
+            <h1
+              id="hero-title"
+              className={cn(
+                "text-[40px] font-extrabold leading-[1.05] tracking-tight",
+                "text-primary sm:text-[52px] xl:text-[64px]",
+              )}
+            >
+              {t("home.heroTitleLine1")}
+              <br />
+              {t("home.heroTitleLine2")}
+            </h1>
 
-            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg lg:mx-0">
-              Безопасная аренда вещей от людей рядом. Электроника, инструменты, камеры,
-              транспорт и многое другое — в вашем городе.
+            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted-bg sm:text-lg lg:mx-0">
+              {t("home.heroText")}
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
-              <Button href="#download">
-                Скачать приложение
+              <Button href="/catalog">
+                {t("home.heroCatalog")}
                 <ArrowRight className="size-5" aria-hidden />
               </Button>
-              <Button href="#how-it-works" variant="outline">
-                Как это работает
+              <Button href="/how-it-works" variant="outline">
+                {t("home.heroHow")}
               </Button>
             </div>
           </div>
@@ -78,7 +78,7 @@ export function HeroSection() {
             />
 
             <div className="relative mx-auto w-[72%] max-w-[290px] py-4 sm:w-[64%]">
-              <PhoneFrame label="Экран приложения KIROYA: объявления аренды в Душанбе">
+              <PhoneFrame label={t("home.phoneLabel")}>
                 <HeroAppScreen />
               </PhoneFrame>
               <HeroEscrowCard className="absolute -left-6 bottom-20 hidden sm:flex lg:-left-16" />

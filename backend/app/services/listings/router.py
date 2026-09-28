@@ -12,6 +12,7 @@ from app.core.security import CurrentUser
 from app.core.storage import StorageDep
 from app.services.listings import service
 from app.services.listings.schemas import (
+    BusyPeriod,
     CategoryRead,
     ListingCreate,
     ListingDetail,
@@ -90,6 +91,20 @@ async def get_listing(listing_id: uuid.UUID, session: SessionDep, cache: CacheDe
     detail = await _detail_or_404(session, listing_id)
     await cache.set(key, detail.model_dump(mode="json"), LISTING_TTL)
     return detail
+
+
+@router.get(
+    "/{listing_id}/busy-dates",
+    response_model=list[BusyPeriod],
+    summary="Занятые даты",
+    description=(
+        "Будущие периоды [start_date, end_date), занятые бронями (ждёт оплаты, оплачено, "
+        "в аренде, возврат). День end_date свободен — с него можно бронировать."
+    ),
+    response_description="Занятые периоды по возрастанию start_date",
+)
+async def busy_dates(listing_id: uuid.UUID, session: SessionDep) -> list[BusyPeriod]:
+    return await service.busy_periods(session, listing_id)
 
 
 @router.post(

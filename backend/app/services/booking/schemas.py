@@ -46,6 +46,12 @@ class ListingBrief(BaseModel):
     price_per_day: Decimal = Field(examples=["150.00"])
 
 
+class Participant(BaseModel):
+    id: uuid.UUID
+    name: str | None
+    avatar_url: str | None
+
+
 class HandoverRead(ORMModel):
     id: uuid.UUID
     photos_before: list[str]
@@ -59,6 +65,8 @@ class BookingDetail(BaseModel):
     listing: ListingBrief
     renter_id: uuid.UUID
     owner_id: uuid.UUID
+    renter: Participant
+    owner: Participant
     start_date: date
     end_date: date
     days: int = Field(examples=[3])
@@ -71,6 +79,10 @@ class BookingDetail(BaseModel):
     escrow: EscrowRead | None
     handover: HandoverRead | None
     created_at: datetime
+    reviewed_by_me: bool | None = Field(
+        default=None,
+        description="Оставил ли текущий пользователь отзыв по сделке (null — не запрашивалось)",
+    )
 
 
 class BookingCreatedResponse(BaseModel):

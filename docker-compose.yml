@@ -1,26 +1,30 @@
-# Локальный запуск KIROYA: docker compose up --build
+# Локальный запуск KIROYA одной командой:
+#   make setup && docker compose up --build        (Windows: scripts\setup.ps1)
+#   или: cp .env.example .env, впиши SECRET_KEY (openssl rand -hex 32), docker compose up --build
+# С Telegram-ботом: docker compose --profile with-bot up --build
+# Тесты в контейнерах: docker compose --profile test run --rm backend-tests (см. Makefile)
 name: kiroya
 
-# Один образ для API, миграций и Celery; адреса сервисов — внутри docker-сети
-x-backend-env: &backend-env
-  build: ./backend
+# Общая часть backend, Celery и Flower: один образ, все переменные — из корневого .env
+x-backend: &backend-base
+  build:
+    context: ./backend
+    target: runtime
   image: kiroya-backend:local
-  env_file: ./backend/.env
+  env_file: .env
   environment:
-    POSTGRES_HOST: db
-    POSTGRES_PORT: 5432
-    REDIS_URL: redis://redis:6379/0
-    RATE_LIMIT_STORAGE_URI: redis://redis:6379/1
-    CELERY_BROKER_URL: redis://redis:6379/2
-    CELERY_RESULT_BACKEND: redis://redis:6379/3
-    MINIO_ENDPOINT: minio:9000
+    # Пустой ключ подписи JWT = подделываемые токены: без него compose не стартует
+    SECRET_KEY: ${SECRET_KEY:?SECRET_KEY пуст — выполни make setup или впиши openssl rand -hex 32 в .env}
+  restart: unless-stopped
 
 services:
   db:
     image: postgis/postgis:17-3.5
     restart: unless-stopped
-    # POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB — из того же .env, что и backend
-    env_file: ./backend/.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kiroya}
+      POSTGRES_USER: ${POSTGRES_USER:-kiroya}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Скопируй .env.example в .env}
     command:
       - postgres
       - -c
@@ -29,10 +33,11 @@ services:
       - shared_buffers=256MB
       - -c
       - log_min_duration_statement=500   # логировать запросы дольше 500 мс
+    # Инфраструктура слушает только localhost хоста — не светим БД в локальную сеть
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT_HOST:-5432}:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -40,11 +45,11 @@ services:
       retries: 10
 
   redis:
-    image: redis:7.4-alpine
+    image: redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${REDIS_PORT_HOST:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -53,97 +58,157 @@ services:
       timeout: 3s
       retries: 10
 
-  # S3-совместимое хранилище фото. Консоль: http://localhost:9001
-  # Образ minio/minio удалён с Docker Hub (2025) — берём сборку Chainguard того же MinIO
+  # S3-совместимое хранилище фото. Консоль: http://localhost:9001 (логин/пароль — MINIO_ACCESS_KEY/SECRET_KEY)
+  # Образа minio/minio больше нет на Docker Hub (MinIO перестал его публиковать в 2025) —
+  # по умолчанию сборка Chainguard того же MinIO; свой образ — через MINIO_IMAGE в .env
   minio:
-    image: cgr.dev/chainguard/minio:latest
+    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio:latest}
     restart: unless-stopped
     command: server /data --console-address ":9001"
-    # MINIO_ROOT_USER / MINIO_ROOT_PASSWORD — из backend/.env
-    env_file: ./backend/.env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-kiroya}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?Скопируй .env.example в .env}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - minio_data:/data
 
-  # Одноразовый контейнер: накатывает миграции до старта API
-  migrate:
-    <<: *backend-env
-    command: ["alembic", "upgrade", "head"]
+  # API. Entrypoint сам ждёт БД, катит миграции (alembic upgrade head) и сид категорий
+  backend:
+    <<: *backend-base
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+      start_interval: 3s
     depends_on:
       db:
         condition: service_healthy
-    restart: "no"
-
-  backend:
-    <<: *backend-env
-    restart: unless-stopped
-    ports:
-      - "${BACKEND_PORT:-8000}:8000"
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
 
-  # Фоновые задачи: автоотмена броней, напоминания, автоподтверждение возврата
+  # Фоновые задачи: автоотмена броней, напоминания, автоподтверждение возврата.
+  # Стартует после healthy backend = миграции уже накатаны
   celery_worker:
-    <<: *backend-env
-    restart: unless-stopped
+    <<: *backend-base
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
-    healthcheck:
-      disable: true
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
-
-  celery_beat:
-    <<: *backend-env
-    restart: unless-stopped
-    # Файл расписания — в /tmp: у пользователя app нет прав на запись в /app
-    command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
-    healthcheck:
-      disable: true
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
-
-  # Мониторинг Celery: http://localhost:5555 (в проде — только за VPN / basic-auth)
-  flower:
-    <<: *backend-env
-    restart: unless-stopped
-    command: celery -A app.core.celery_app flower --port=5555
-    ports:
-      - "5555:5555"
-    healthcheck:
-      disable: true
-    depends_on:
-      - celery_worker
-
-  # Telegram-бот. Нужен BOT_TOKEN в bot/.env; запуск: docker compose --profile bot up -d
-  bot:
-    build: ./bot
-    image: kiroya-bot:local
-    profiles: ["bot"]
-    restart: unless-stopped
-    env_file:
-      - path: ./bot/.env
-        required: false
     environment:
-      BACKEND_URL: http://backend:8000
-      REDIS_URL: redis://redis:6379/4
+      RUN_MIGRATIONS: "false"
+    healthcheck:
+      disable: true
     depends_on:
       backend:
         condition: service_healthy
       redis:
         condition: service_healthy
 
+  celery_beat:
+    <<: *backend-base
+    # Файл расписания — в /tmp: у пользователя app нет прав на запись в /app
+    command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    environment:
+      RUN_MIGRATIONS: "false"
+    healthcheck:
+      disable: true
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Мониторинг Celery: http://localhost:5555 (только localhost; в проде — за VPN / basic-auth)
+  flower:
+    <<: *backend-base
+    command: celery -A app.core.celery_app flower --port=5555
+    environment:
+      RUN_MIGRATIONS: "false"
+    ports:
+      - "127.0.0.1:5555:5555"
+    healthcheck:
+      disable: true
+    depends_on:
+      - celery_worker
+
+  # Telegram-бот — только с профилем: docker compose --profile with-bot up -d (нужен BOT_TOKEN)
+  bot:
+    build:
+      context: ./bot
+      target: runtime
+    image: kiroya-bot:local
+    profiles: ["with-bot"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # База 4: в backend заняты 0 (кэш/OTP), 1 (rate limit), 2–3 (Celery)
+      REDIS_URL: ${BOT_REDIS_URL:-redis://redis:6379/4}
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Лендинг (production-сборка Next.js standalone): http://localhost:3000
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_MEDIA_URL: ${NEXT_PUBLIC_MEDIA_URL:-http://localhost:9000}
+    image: kiroya-web:local
+    restart: unless-stopped
+    environment:
+      # Сервер сайта ходит в backend и MinIO по docker-сети, браузер — через localhost
+      API_INTERNAL_URL: http://backend:8000
+      MEDIA_INTERNAL_URL: http://minio:9000
+      WEB_API_SECRET: ${WEB_API_SECRET:-}
+      # Заголовок с IP посетителя от доверенного reverse proxy (nginx: x-real-ip). Пусто — не доверяем
+      TRUSTED_IP_HEADER: ${TRUSTED_IP_HEADER:-}
+      # Cookies с флагом Secure: включить за HTTPS (в проде), на http://localhost — false
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - backend
+
+  # ---------- Тесты (профиль test): make test / scripts/test.ps1 ----------
+  # Backend-тесты идут против той же БД в транзакции с откатом — данные не портятся
+  backend-tests:
+    build:
+      context: ./backend
+      target: test
+    image: kiroya-backend:test
+    profiles: ["test"]
+    env_file: .env
+    environment:
+      RUN_MIGRATIONS: "false"
+    healthcheck:
+      disable: true
+    volumes:
+      - ./backend/tests:/app/tests:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Бот тестируется на моках (Telegram, backend, fakeredis) — .env не нужен
+  bot-tests:
+    build:
+      context: ./bot
+      target: test
+    image: kiroya-bot:test
+    profiles: ["test"]
+    volumes:
+      - ./bot/tests:/app/tests:ro
+
 volumes:
-  pg_data:
+  postgres_data:
   redis_data:
   minio_data:

@@ -7,12 +7,24 @@ const config: Config = {
       transparent: "transparent",
       current: "currentColor",
       primary: "#1A5276",
+      // #E67E22 — фирменный: только декор (иконки, обводки, точки, FAB-иконки). Для текста и
+      // кнопок с белым текстом — тёмные варианты ниже (WCAG AA ≥ 4.5:1, см. DESIGN_SYSTEM)
       accent: "#E67E22",
+      "accent-text": "#A95A0E",
+      "accent-btn": "#AE6217",
+      "accent-btn-hover": "#9B5714",
       background: "#F8F6F2",
       surface: "#FFFFFF",
       success: "#1E8449",
       ink: "#1C1C1E",
       muted: "#6B7280",
+      // Вторичный текст на фоне #F8F6F2: у #6B7280 там контраст 4.48:1 < WCAG AA 4.5:1.
+      // Это ink (#1C1C1E) 65% поверх background — 5.15:1. На белых карточках — обычный muted
+      "muted-bg": "#696868",
+      // Красного в палитре DS нет, а он нужен для ошибок форм и кнопки «Выйти» (5.4:1 на белом)
+      danger: "#C0392B",
+      // Вторичный текст на синем хедере профиля (DS: «Подпись #A8C6D9»)
+      "primary-soft": "#A8C6D9",
       border: "#E5E7EB",
       "deposit-bg": "#FEF3E2",
     },

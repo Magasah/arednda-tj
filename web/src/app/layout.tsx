@@ -1,6 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
+import { AuthProvider } from "@/components/providers/AuthProvider";
+import { Toaster } from "@/components/ui/Toast";
+import { SITE_URL } from "@/lib/env";
+import { t } from "@/lib/i18n";
+
 import "./globals.css";
 
 const inter = Inter({
@@ -11,10 +16,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://kiroya.tj"),
-  title: "KIROYA — Аренда вещей в Душанбе | Безопасно и удобно",
-  description:
-    "Арендуй ноутбук, камеру, инструменты рядом с тобой. Первая P2P платформа аренды вещей в Таджикистане. Защита денег через эскроу, фото-акт, рейтинг мастеров.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: t("meta.homeTitle"),
+    template: "%s — KIROYA",
+  },
+  description: t("meta.homeDescription"),
   keywords: [
     "кироя",
     "аренда",
@@ -25,13 +32,10 @@ export const metadata: Metadata = {
     "ноутбук аренда",
     "камера аренда",
   ],
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     title: "KIROYA — Арендуй всё рядом с тобой",
     description: "Безопасная аренда вещей в Таджикистане",
-    url: "https://kiroya.tj",
+    url: SITE_URL,
     siteName: "KIROYA",
     locale: "ru_TJ",
     type: "website",
@@ -64,6 +68,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#1A5276",
 };
 
 interface RootLayoutProps {
@@ -73,11 +78,18 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="ru" className={inter.variable}>
-      <body>
+      <body className="flex min-h-screen flex-col">
         <noscript>
           <style>{"[data-fade]{opacity:1!important;transform:none!important}"}</style>
         </noscript>
-        {children}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-[8px] focus:bg-surface focus:px-4 focus:py-3 focus:text-primary focus:shadow-card"
+        >
+          {t("common.skipToContent")}
+        </a>
+        <AuthProvider>{children}</AuthProvider>
+        <Toaster />
       </body>
     </html>
   );

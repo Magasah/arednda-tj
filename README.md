@@ -5,7 +5,7 @@
 Деньги и залог замораживаются на эскроу до возврата вещи, передача фиксируется
 фото-актом, а рейтинг доверия защищает обе стороны сделки.
 
-**Платформы:** веб-сайт (лендинг) · Telegram-бот · мобильное приложение (Flutter, в планах).
+**Платформы:** веб-сайт (каталог, вход по SMS, профиль) · Telegram-бот · мобильное приложение (Flutter, в планах).
 
 ![Лендинг kiroya.tj](web/design/screenshot-home-half.png)
 
@@ -17,7 +17,7 @@
 | Данные | PostgreSQL 17 + PostGIS, Redis 7, MinIO (S3) |
 | Фоновые задачи | Celery + Redis, Flower |
 | Авторизация | Номер телефона + SMS-код (OTP), JWT (access + refresh) |
-| Web | Next.js 14 (App Router), TypeScript, Tailwind CSS, Framer Motion |
+| Web | Next.js 14 (App Router), TypeScript, Tailwind CSS, Zustand, Radix Dialog, sonner, Vitest |
 | Бот | aiogram 3, httpx, Redis FSM |
 | Инфраструктура | Docker Compose, GitHub Actions |
 
@@ -31,7 +31,7 @@
 ## Структура репозитория
 
 ```
-web/       Next.js лендинг (kiroya.tj)
+web/       Next.js сайт (kiroya.tj): лендинг, каталог, карточка, вход, профиль
 backend/   FastAPI + PostgreSQL + Redis + Celery
 bot/       Telegram-бот (aiogram 3)
 mobile/    Flutter-приложение (каркас, ещё не начато)
@@ -41,23 +41,61 @@ design/    Логотипы, макеты, дизайн-система (web/desi
 .github/   CI, шаблон PR, CODEOWNERS
 ```
 
-## Быстрый старт для разработчика
+## Быстрый старт (Docker — одной командой)
 
-Требования: Docker Desktop, Python 3.14+, Node 20+.
-Рекомендуется [uv](https://docs.astral.sh/uv/) — `pyproject.toml` и `uv.lock` есть в `backend/` и `bot/`.
+Нужен только [Docker Desktop](https://www.docker.com/products/docker-desktop/). Python, Node, Postgres, Redis, MinIO ставить не нужно.
 
 ```bash
 git clone https://github.com/Magasah/arednda-tj.git
 cd arednda-tj
+make setup                      # .env из шаблона + случайные SECRET_KEY и пароли
+                                # Windows без make: scripts\setup.ps1
+                                # вручную: cp .env.example .env и впиши SECRET_KEY=$(openssl rand -hex 32)
+docker compose up --build
+
+# Готово. Сервисы доступны:
+# http://localhost:3000       — сайт
+# http://localhost:8000       — API
+# http://localhost:8000/docs  — Swagger
+# http://localhost:9001       — MinIO Console (логин/пароль — MINIO_ACCESS_KEY / MINIO_SECRET_KEY из .env)
+# http://localhost:5555       — Flower (Celery)
 ```
 
-**1. Скопируй `.env` файлы из `.env.example`** и заполни значения (секреты запроси у владельца проекта):
+Первый запуск — 2–5 минут (сборка образов). Backend сам ждёт БД, накатывает миграции и сид категорий.
+Старый Docker без плагина compose v2 — та же команда через `docker-compose`.
+
+**Удобные команды** (`make` — Linux/macOS/Git Bash/WSL; на Windows без make — `scripts/*.ps1`):
+
+| make | PowerShell | Что делает |
+|---|---|---|
+| `make setup` | `scripts\setup.ps1` | `.env.example` → `.env` + случайные секреты и пароли |
+| `make up` | `scripts\up.ps1` | всё в фоне (без бота) |
+| `make up-bot` | `scripts\up.ps1 -WithBot` | вместе с Telegram-ботом (нужен `BOT_TOKEN` в `.env`) |
+| `make test` | `scripts\test.ps1` | тесты backend и бота в контейнерах |
+| `make logs` / `make down` | — | логи / остановка |
+| `make backend-sh` / `make db-sh` | — | shell в backend / psql |
+| `make clean` | — | ⚠️ down + удалить volumes (БД, Redis, MinIO) |
+
+PowerShell-скрипты: `powershell -ExecutionPolicy Bypass -File scripts\up.ps1`.
+
+Код входа по SMS в режиме `ENVIRONMENT=development` не отправляется, а пишется в лог backend: `docker compose logs -f backend`.
+
+## Разработка без Docker
+
+Для тех, кто запускает сервисы по отдельности (hot reload, отладчик).
+Требования: Python 3.14+, Node 20+, Docker — только для инфраструктуры.
+Рекомендуется [uv](https://docs.astral.sh/uv/) — `pyproject.toml` и `uv.lock` есть в `backend/` и `bot/`.
+
+**1. Скопируй `.env` файлы** (в них хосты `localhost`, а не имена docker-сервисов):
 
 ```bash
+make setup                        # корневой .env — нужен docker compose для db/redis/minio
 cp backend/.env.example backend/.env
 cp bot/.env.example bot/.env
 cp web/.env.example web/.env.local
 ```
+
+Пароли `POSTGRES_PASSWORD` и `MINIO_SECRET_KEY` в `backend/.env` должны совпадать с корневым `.env`.
 
 **2. Запусти инфраструктуру**
 
@@ -78,8 +116,6 @@ python -m scripts.seed_categories
 uvicorn app.main:app --reload --reload-dir app
 ```
 
-Код входа по SMS в режиме `ENVIRONMENT=development` не отправляется, а пишется в лог backend.
-
 **4. Frontend** (http://localhost:3000)
 
 ```bash
@@ -97,15 +133,15 @@ pip install -r requirements.txt
 python main.py
 ```
 
-**Всё в Docker одной командой:** `docker compose up -d --build` (backend, Celery, Flower);
-бот — `docker compose --profile bot up -d bot`.
-
 ## Тесты
 
 ```bash
+make test                     # всё в контейнерах (или scripts\test.ps1)
+
+# без Docker:
 cd backend && pytest -v       # нужны db и redis из docker compose
 cd bot && pytest -v
-cd web && npm run lint && npm run build
+cd web && npm run lint && npm test && npm run build   # vitest + Testing Library
 ```
 
 ## Для ИИ-агентов (Claude, Cursor, ChatGPT)

@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import type { KiroyaIconName } from "@/lib/kiroyaIcons";
+import { t } from "@/lib/i18n";
 
 interface StepCardProps {
   step: number;
@@ -16,7 +17,7 @@ export function StepCard({ step, icon, title, description }: StepCardProps) {
         <span className="flex size-12 items-center justify-center rounded-full bg-primary">
           <Icon name={icon} className="text-surface" />
         </span>
-        <span className="text-sm font-semibold text-muted">Шаг {step}</span>
+        <span className="text-sm font-semibold text-muted">{t("home.step", { step })}</span>
       </div>
       <h3 className="mt-5 text-xl font-bold text-ink">{title}</h3>
       <p className="mt-2 text-[15px] leading-relaxed text-muted">{description}</p>
