@@ -11,6 +11,9 @@ interface CatalogPageProps {
   searchParams: Record<string, string | string[] | undefined>;
 }
 
+// Данные каталога кэшируются на 60 с (фильтры в URL — страница рендерится на запрос, fetch — из кэша)
+export const revalidate = 60;
+
 export const metadata: Metadata = pageMetadata({
   title: t("meta.catalogTitle"),
   description: t("meta.catalogDescription"),

@@ -8,17 +8,37 @@ import { Button } from "@/components/ui/Button";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/lib/store/auth";
 
-// Модалка (Radix Dialog) нужна только после клика — отдельный чанк
-const ComingSoonModal = dynamic(() => import("./ComingSoonModal").then((mod) => mod.ComingSoonModal), {
+// Окно бронирования с календарём — отдельный чанк, грузится по клику
+const BookingModal = dynamic(() => import("@/components/booking/BookingModal").then((mod) => mod.BookingModal), {
   ssr: false,
 });
 
-/** Гость → на вход с возвратом к объявлению; вошедший → «скоро откроем» */
-export function BookButton({ disabled = false, className }: { disabled?: boolean; className?: string }) {
+interface BookButtonProps {
+  listingId: string;
+  ownerId: string;
+  title: string;
+  pricePerDay: string;
+  deposit: string;
+  disabled?: boolean;
+  className?: string;
+}
+
+/** Гость → вход с возвратом к объявлению; владелец — своё не бронирует; остальные → календарь */
+export function BookButton({ listingId, ownerId, title, pricePerDay, deposit, disabled = false, className }: BookButtonProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userId = useAuthStore((state) => state.user?.id);
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
+  const own = Boolean(userId) && userId === ownerId;
+
+  if (own) {
+    return (
+      <Button href={`/listing/${listingId}/edit`} variant="outline" size="md" className={className ?? "w-full"}>
+        {t("account.edit")}
+      </Button>
+    );
+  }
 
   return (
     <>
@@ -37,7 +57,16 @@ export function BookButton({ disabled = false, className }: { disabled?: boolean
       >
         {t("listing.book")}
       </Button>
-      {open && <ComingSoonModal open={open} onOpenChange={setOpen} />}
+      {open && (
+        <BookingModal
+          open={open}
+          onOpenChange={setOpen}
+          listingId={listingId}
+          title={title}
+          pricePerDay={pricePerDay}
+          deposit={deposit}
+        />
+      )}
     </>
   );
 }

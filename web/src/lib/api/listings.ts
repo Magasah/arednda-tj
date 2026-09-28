@@ -17,7 +17,7 @@ export const LISTINGS_PAGE_SIZE = 12;
 export function getListings(query: ListingQuery = {}, client: ApiClient = apiClient) {
   return client.request<ListingPage>("/listings", {
     query: { limit: LISTINGS_PAGE_SIZE, ...query },
-    next: { revalidate: 30 },
+    next: { revalidate: 60 },
   });
 }
 

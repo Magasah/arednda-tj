@@ -24,6 +24,9 @@ async function loadCategories(): Promise<Category[] | null> {
   }
 }
 
+// Данные каталога кэшируются на 60 с (фильтры в URL — страница рендерится на запрос, fetch — из кэша)
+export const revalidate = 60;
+
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const categories = await loadCategories();
   const category = categories?.find((item) => item.slug === params.category);

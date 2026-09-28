@@ -13,13 +13,15 @@ interface ModalProps {
   description?: string;
   children?: React.ReactNode;
   footer?: React.ReactNode;
+  /** lg — для календаря и сравнения фото */
+  size?: "md" | "lg";
 }
 
 /**
  * Доступная модалка (Radix Dialog: фокус-ловушка, Esc, aria-modal).
  * На мобиле — bottom sheet снизу, с sm — окно по центру.
  */
-export function Modal({ open, onOpenChange, title, description, children, footer }: ModalProps) {
+export function Modal({ open, onOpenChange, title, description, children, footer, size = "md" }: ModalProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -31,7 +33,8 @@ export function Modal({ open, onOpenChange, title, description, children, footer
             "inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-[20px] pb-[max(1.5rem,env(safe-area-inset-bottom))]",
             "data-[state=open]:animate-[sheet-up_200ms_ease-out]",
             // центр
-            "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[calc(100%-2rem)] sm:max-w-md",
+            "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[90vh] sm:w-[calc(100%-2rem)]",
+            size === "lg" ? "sm:max-w-2xl" : "sm:max-w-md",
             "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-card sm:pb-6",
             "sm:data-[state=open]:animate-[fade-in_200ms_ease-out]",
           )}

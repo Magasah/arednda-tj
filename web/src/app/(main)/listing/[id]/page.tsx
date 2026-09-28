@@ -10,11 +10,13 @@ import { CopyLinkButton } from "@/components/listing/CopyLinkButton";
 import { ListingCard } from "@/components/listing/ListingCard";
 import { gridClasses } from "@/components/listing/grid";
 import { OwnerCard } from "@/components/listing/OwnerCard";
+import { ReviewList } from "@/components/reviews/ReviewList";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { Container } from "@/components/ui/Container";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { isApiError } from "@/lib/api/errors";
 import { getCategories, getListing, getListings } from "@/lib/api/listings";
+import { getListingReviews } from "@/lib/api/reviews";
 import { serverApi } from "@/lib/api/server";
 import type { Category, ListingCard as ListingCardData, ListingDetail } from "@/lib/api/types";
 import { SITE_URL } from "@/lib/env";
@@ -28,6 +30,9 @@ const ListingGallery = dynamic(
   () => import("@/components/listing/ListingGallery").then((mod) => mod.ListingGallery),
   { loading: () => <Skeleton className="aspect-[4/3] w-full rounded-card" /> },
 );
+
+// ISR: карточка пересобирается не чаще раза в минуту; после правки владельцем — сразу (revalidatePath)
+export const revalidate = 60;
 
 interface ListingPageProps {
   params: { id: string };
@@ -109,10 +114,12 @@ export default async function ListingPage({ params }: ListingPageProps) {
   if (!listing) notFound();
 
   const api = serverApi();
-  const [categoriesResult, similarResult] = await Promise.allSettled([
+  const [categoriesResult, similarResult, reviewsResult] = await Promise.allSettled([
     getCategories(api),
     getListings({ category: listing.category_slug, limit: 5 }, api),
+    getListingReviews(listing.id, api, 3),
   ]);
+  const renterReviews = reviewsResult.status === "fulfilled" ? reviewsResult.value : null;
   const category: Category | undefined =
     categoriesResult.status === "fulfilled"
       ? categoriesResult.value.find((item) => item.slug === listing.category_slug)
@@ -123,6 +130,14 @@ export default async function ListingPage({ params }: ListingPageProps) {
       : [];
   const categoryName = category?.name_ru ?? listing.category_slug;
   const deposit = Number.parseFloat(listing.deposit_amount);
+  const bookProps = {
+    listingId: listing.id,
+    ownerId: listing.owner_id,
+    title: listing.title,
+    pricePerDay: listing.price_per_day,
+    deposit: listing.deposit_amount,
+    disabled: listing.status !== "active",
+  };
 
   return (
     <>
@@ -180,7 +195,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
               {/* На мобиле кнопка — в липкой панели снизу (всегда под пальцем) */}
               <div className="hidden lg:block">
-                <BookButton disabled={listing.status !== "active"} />
+                <BookButton {...bookProps} />
               </div>
               <CopyLinkButton />
             </div>
@@ -205,6 +220,18 @@ export default async function ListingPage({ params }: ListingPageProps) {
                 <OwnerCard owner={listing.owner} />
               </div>
             </section>
+
+            {renterReviews && renterReviews.total > 0 && (
+              <section aria-labelledby="renter-reviews-title">
+                <h2 id="renter-reviews-title" className="text-xl font-bold text-ink">
+                  {t("reviews.renterReviews")}
+                </h2>
+                <p className="mt-1 text-sm text-muted-bg">{t("reviews.renterReviewsHint")}</p>
+                <div className="mt-3">
+                  <ReviewList items={renterReviews.items} compact />
+                </div>
+              </section>
+            )}
           </div>
         </div>
 
@@ -234,7 +261,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
               {deposit > 0 ? t("common.deposit", { amount: formatMoney(deposit) }) : t("common.depositNone")}
             </span>
           </p>
-          <BookButton disabled={listing.status !== "active"} className="shrink-0 px-6" />
+          <BookButton {...bookProps} className="shrink-0 px-6" />
         </div>
       </div>
     </>
